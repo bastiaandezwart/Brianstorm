@@ -135,6 +135,17 @@ label { font-size: 0.85rem; color: var(--muted); display: block; margin-bottom: 
 .role-pick button { justify-content: flex-start; padding: 0.9rem; text-align: left; gap: 0.75rem; white-space: normal; border-left: 4px solid var(--c); }
 .role-pick button strong { display: block; }
 
+.counter { font-size: 0.75rem; color: var(--muted); font-variant-numeric: tabular-nums; text-align: right; }
+.star { position: relative; z-index: 1; margin-left: auto; min-width: 28px; min-height: 28px; padding: 0; justify-content: center; border-color: transparent; background: transparent; color: var(--muted); font-size: 1rem; }
+.star[aria-pressed="true"] { color: var(--warn-ink); }
+.comment .del { margin-left: auto; }
+.matrix-empty { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; padding: 1.5rem; color: var(--muted); font-size: 0.9rem; pointer-events: none; }
+.matrix-empty span { background: var(--surface); padding: 0.6rem 0.9rem; border-radius: 8px; box-shadow: var(--shadow); max-width: 32ch; }
+.notes-warning { background: var(--zorg); color: var(--zorg-text); border-radius: 8px; padding: 0.6rem 0.8rem; margin-bottom: 0.6rem; font-size: 0.9rem; display: flex; flex-direction: column; gap: 0.5rem; }
+.notes-warning .row button { color: var(--text); }
+.typing { font-size: 0.85rem; color: var(--accent); margin-bottom: 0.4rem; }
+.list select, .list input[type=date] { padding: 0.15rem 0.3rem; font-size: 0.85rem; width: auto; }
+
 /* Home */
 .hero { display: flex; align-items: flex-end; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
 .hero h1 { font-size: 1.7rem; margin: 0; }
@@ -545,7 +556,7 @@ function guardWrite() {
     toast('Je kunt meekijken, maar niet bewerken. Vraag de eigenaar om je als Contributor toe te voegen.');
     return false;
   }
-  if (!myRole()) { S.ui.changeRole = true; render(); return false; }
+  if (!S.members[S.me]) { S.ui.changeRole = true; render(); return false; }
   return true;
 }
 
@@ -555,6 +566,10 @@ function subscribe() {
   for (const coll of COLLECTIONS) {
     db.collection(coll).onSnapshot((snap) => {
       const rows = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      if (coll === 'boards' && S.board && document.activeElement?.id === 'board-notes' && S.notesBase != null) {
+        const after = rows.find((x) => x.id === S.board);
+        if (after && (after.notes ?? '') !== S.notesBase && after.notesBy !== S.me) S.notesConflict = 'live';
+      }
       if (coll === 'boards' && S.board) {
         const before = S.boards.find((x) => x.id === S.board);
         const after = rows.find((x) => x.id === S.board);
@@ -639,18 +654,28 @@ function appbar() {
     <div class="avatars hide-sm" title="Wie is er nu online">
       ${roster().map(({ role, id }) => avatar(id, { size: 'sm', role, online: id ? online.has(id) : false })).join('')}
     </div>
-    ${S.me ? `<button class="ghost sm" data-action="change-role" title="Rol wijzigen" aria-label="${myRole() ? `Jouw rol: ${attr(ROLES[myRole()].label)}. Wijzigen` : 'Kies je rol'}">${myRole() ? esc(ROLES[myRole()].short) : 'Kies je rol'}</button>` : ''}
+    ${S.me && !(S.readOnly || S.canWrite === false) ? `<button class="ghost sm" data-action="change-role" title="Rol wijzigen" aria-label="${myRole() ? `Jouw rol: ${attr(ROLES[myRole()].label)}. Wijzigen` : 'Je doet mee zonder rol. Rol kiezen'}">${myRole() ? esc(ROLES[myRole()].short) : 'Geen rol'}</button>` : ''}
   </header>`;
 }
 
+// Tekenen is niet herintreedbaar: komt er tijdens het tekenen (bijv. via een focus-event) nog een
+// verzoek binnen, dan volgt één extra ronde zodra de huidige klaar is.
+let rendering = false;
+let renderAgain = false;
 function render() {
+  if (rendering) { renderAgain = true; return; }
+  rendering = true;
+  try { renderNow(); } finally { rendering = false; }
+  if (renderAgain) { renderAgain = false; queueMicrotask(render); }
+}
+function renderNow() {
   let html;
   if (!S.started) html = '<div class="loading">Brainstorm laden…</div>';
   else if (!S.cap.db) html = renderNoRuntime();
   else if (S.dbError) html = `<main class="center"><div class="panel"><h2>De gegevens zijn niet bereikbaar</h2><p class="muted">Herlaad de pagina. Lukt het dan nog niet, controleer of je nog toegang hebt tot deze brainstorm.</p></div></main>`;
   else if (S.loaded.size < COLLECTIONS.length && !S.boards.length && !Object.keys(S.members).length) html = `<div class="loading">${S.slow ? 'De gegevens zijn nog niet bereikbaar. Controleer je verbinding.' : 'Brainstorm laden…'}</div>`;
   else if (!S.me) html = renderNoIdentity();
-  else if (!myRole() || S.ui.changeRole) html = appbar() + renderRolePicker();
+  else if ((!S.members[S.me] && S.canWrite !== false && !S.readOnly) || S.ui.changeRole) html = appbar() + renderRolePicker();
   else if (S.board && board()) html = appbar() + renderBoard();
   else html = appbar() + renderHome();
   if (S.modal) html += renderModal();
@@ -729,7 +754,11 @@ function renderRolePicker() {
         </button>`;
       }).join('')}
     </div>
-    ${mine ? '<div class="row" style="margin-top:1rem"><button data-action="cancel-role">Annuleren</button></div>' : ''}
+    <div class="row" style="margin-top:1rem">
+      <button data-action="no-role">${mine ? 'Zonder rol verder' : 'Meedoen zonder rol'}</button>
+      <span class="muted small" style="flex:1; min-width:min(220px, 100%)">Bijvoorbeeld als gast of als alle rollen al bezet zijn. Je kunt ideeën toevoegen, stemmen en reageren.</span>
+      ${S.members[S.me] ? '<button data-action="cancel-role">Annuleren</button>' : ''}
+    </div>
   </div></main>`;
 }
 
@@ -745,7 +774,7 @@ function renderHome() {
     ${readOnlyBanner()}
     ${S.slow ? '<div class="banner warn">Sommige gegevens zijn nog niet geladen; wat je ziet kan verouderd zijn.</div>' : ''}
     <div class="hero">
-      <div><h1>Hoi ${esc(firstName(S.me))}</h1><p class="muted" style="margin:0">Waar gaan we vandaag over sparren?</p></div>
+      <div><h1>Hoi ${esc(S.profiles[S.me]?.name?.split(' ')[0] || firstName(S.me))}</h1><p class="muted" style="margin:0">Waar gaan we vandaag over sparren?</p></div>
       <span class="spacer"></span>
       <button class="primary" data-action="toggle-new-board">${S.ui.newBoard ? 'Annuleren' : '+ Nieuwe sessie'}</button>
     </div>
@@ -790,8 +819,8 @@ function renderNewBoard() {
       ${TEMPLATES.map((t) => `<button class="template ${t.key === S.ui.template ? 'selected' : ''}" data-action="pick-template" data-key="${t.key}"><strong>${esc(t.title)}</strong><span class="muted small">${esc(t.description || 'Leeg bord, eigen vraag.')}</span></button>`).join('')}
     </div>
     <div class="stack">
-      <div><label for="nb-title">Titel</label><input id="nb-title" data-draft="nb.title" value="${attr(draft('nb.title'))}" placeholder="${attr(tpl.title)}"></div>
-      <div><label for="nb-question">Centrale vraag</label><input id="nb-question" data-draft="nb.question" value="${attr(draft('nb.question'))}" placeholder="${attr(tpl.question || 'Bijv. Hoe kunnen wij …?')}"></div>
+      <div><label for="nb-title">Titel</label><input id="nb-title" maxlength="120" data-draft="nb.title" value="${attr(draft('nb.title'))}" placeholder="${attr(tpl.title)}"></div>
+      <div><label for="nb-question">Centrale vraag</label><input id="nb-question" maxlength="500" data-draft="nb.question" value="${attr(draft('nb.question'))}" placeholder="${attr(tpl.question || 'Bijv. Hoe kunnen wij …?')}"></div>
       <div class="muted small">Thema's: ${tpl.clusters.map((c) => `<span class="badge">${esc(c)}</span>`).join(' ')}</div>
       <div><button class="primary" data-action="create-board">Sessie starten</button></div>
     </div>
@@ -802,7 +831,7 @@ function renderRadar() {
   return `<section class="section">
     <div class="section-head"><h2>Kansenradar</h2><span class="muted small">De beste ideeën uit alle sessies, van verkennen tot bouwen.</span></div>
     <div class="row" style="margin-bottom:0.75rem; max-width:640px">
-      <input id="opp-title" data-draft="opp.title" data-enter="add-opportunity" value="${attr(draft('opp.title'))}" placeholder="Nieuwe kans toevoegen…" style="flex:1">
+      <input id="opp-title" maxlength="200" data-draft="opp.title" data-enter="add-opportunity" value="${attr(draft('opp.title'))}" placeholder="Nieuwe kans toevoegen…" style="flex:1">
       <button data-action="add-opportunity">Toevoegen</button>
     </div>
     <div class="kanban-wrap"><div class="kanban">
@@ -811,7 +840,9 @@ function renderRadar() {
         return `<div class="kanban-col"><h3><span>${esc(stage.label)}</span><span class="muted">${list.length}</span></h3>
           ${list.map((o) => `<div class="opp">
             <div class="opp-title">${esc(o.title)}</div>
-            ${o.description ? `<div class="muted small" style="margin-bottom:0.35rem">${esc(o.description.slice(0, 160))}${o.description.length > 160 ? '…' : ''}</div>` : ''}
+            ${S.ui.editOpp === o.id
+              ? `<label class="sr-only" for="opp-desc-${o.id}">Beschrijving</label><textarea id="opp-desc-${o.id}" maxlength="4000" rows="4" data-change="opp-desc" data-id="${o.id}" placeholder="Wat is de kans, voor wie, en wat is de volgende stap?">${esc(o.description ?? '')}</textarea><div class="row" style="margin:0.3rem 0"><button class="sm primary" data-action="edit-opp" data-id="">Klaar</button></div>`
+              : `${o.description ? `<div class="muted small" style="margin-bottom:0.35rem; white-space:pre-wrap">${esc(o.description.slice(0, 220))}${o.description.length > 220 ? '…' : ''}</div>` : ''}<button class="sm ghost" style="margin-bottom:0.35rem" data-action="edit-opp" data-id="${o.id}">${o.description ? 'Beschrijving bewerken' : '+ Beschrijving'}</button>`}
             ${o.source && S.boards.some((b) => b.id === o.source.boardId) ? `<div class="small" style="margin-bottom:0.35rem">uit <a href="#s-${attr(o.source.boardId)}">${esc(S.boards.find((b) => b.id === o.source.boardId).title)}</a></div>` : ''}
             <div class="row">
               <select data-change="opp-owner" data-id="${o.id}" title="Trekker" aria-label="Trekker">
@@ -862,9 +893,9 @@ function renderBoard() {
       <div style="flex:1; min-width:min(280px, 100%)">
         <div class="small"><a href="#" data-action="home">← Alle sessies</a></div>
         ${S.ui.editHeader ? `<div class="stack panel" style="margin-top:0.5rem">
-            <div><label for="bh-title">Titel</label><input id="bh-title" data-change="board-field" data-field="title" value="${attr(b.title)}"></div>
-            <div><label for="bh-q">Centrale vraag</label><input id="bh-q" data-change="board-field" data-field="question" value="${attr(b.question)}"></div>
-            <div><label for="bh-d">Context</label><textarea id="bh-d" data-change="board-field" data-field="description" rows="3">${esc(b.description)}</textarea></div>
+            <div><label for="bh-title">Titel</label><input id="bh-title" maxlength="120" data-change="board-field" data-field="title" value="${attr(b.title)}"></div>
+            <div><label for="bh-q">Centrale vraag</label><input id="bh-q" maxlength="500" data-change="board-field" data-field="question" value="${attr(b.question)}"></div>
+            <div><label for="bh-d">Context</label><textarea id="bh-d" maxlength="2000" data-change="board-field" data-field="description" rows="3">${esc(b.description)}</textarea></div>
             <div class="row">
               <button class="primary sm" data-action="toggle-edit-header">Klaar</button><span class="spacer"></span>
               <button class="sm" data-action="archive-board">${b.archived ? 'Uit archief halen' : 'Archiveren'}</button>
@@ -916,7 +947,7 @@ function ideaCard(idea) {
   const comments = Object.values(idea.comments ?? {}).filter(Boolean).length;
   const given = ROLE_KEYS.filter((k) => idea.perspectives?.[k]).length;
   return `<article class="card ${esc(idea.status)}" id="card-${idea.id}" style="--c:${color}">
-    <div class="row" style="gap:0.35rem">${lensTag(idea.lens)}${idea.status === 'shortlist' ? '<span class="tag" style="--c:var(--warn); --ci:var(--warn-ink)">★ shortlist</span>' : ''}${idea.status === 'geparkeerd' ? '<span class="tag">geparkeerd</span>' : ''}</div>
+    <div class="row" style="gap:0.35rem">${lensTag(idea.lens)}${idea.status === 'geparkeerd' ? '' : `<button class="star" data-action="quick-shortlist" data-id="${idea.id}" aria-pressed="${idea.status === 'shortlist'}" title="${idea.status === 'shortlist' ? 'Van de shortlist halen' : 'Op de shortlist zetten'}" aria-label="${attr(`Shortlist: ${idea.text}`)}">${idea.status === 'shortlist' ? '★' : '☆'}</button>`}${idea.status === 'geparkeerd' ? '<span class="tag">geparkeerd</span>' : ''}</div>
     <button class="card-open" id="open-${idea.id}" data-action="open-idea" data-id="${idea.id}" aria-haspopup="dialog">${esc(idea.text)}</button>
     <div class="card-foot">
       ${idea.fromAi ? '<span class="tag" style="--c:var(--accent)" title="Voorgesteld door Claude">AI</span>' : avatar(idea.authorId, { size: 'sm' })}
@@ -934,11 +965,14 @@ function ideaCard(idea) {
 function renderIdeas(b) {
   const ideas = boardIdeas();
   const votesUsed = ideas.reduce((s, i) => s + (Number(i.votes?.[S.me]) || 0), 0);
-  const visible = ideas.filter((i) => (S.ui.showParked || i.status !== 'geparkeerd') && (!S.ui.lensFilter || i.lens === S.ui.lensFilter));
+  const q = (S.ui.query ?? '').trim().toLowerCase();
+  const visible = ideas.filter((i) => (S.ui.showParked || i.status !== 'geparkeerd') && (!S.ui.lensFilter || i.lens === S.ui.lensFilter)
+    && (!q || `${i.text} ${i.details ?? ''}`.toLowerCase().includes(q)));
+  const filtering = q || S.ui.lensFilter;
   const clusters = b.clusters ?? [];
   return `<div class="panel">
     <div class="composer">
-      <textarea id="idea-text" data-draft="idea.text" data-enter="add-idea" rows="2" placeholder="Nieuw idee… (Enter = toevoegen, Shift+Enter = nieuwe regel)">${esc(draft('idea.text'))}</textarea>
+      <textarea id="idea-text" maxlength="280" data-counter="idea-count" data-draft="idea.text" data-enter="add-idea" rows="2" aria-describedby="idea-count" placeholder="Nieuw idee… (Enter = toevoegen, Shift+Enter = nieuwe regel)">${esc(draft('idea.text'))}</textarea>
       <select id="idea-cluster" data-draft="idea.cluster" aria-label="Thema">${clusters.map((c) => `<option value="${c.id}" ${draft('idea.cluster') === c.id ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select>
       <select id="idea-lens" data-draft="idea.lens" aria-label="Perspectief">
         <option value="">Geen specifiek perspectief</option>
@@ -946,8 +980,11 @@ function renderIdeas(b) {
       </select>
       <button class="primary" data-action="add-idea">Toevoegen</button>
     </div>
+    <div class="counter" id="idea-count" aria-live="off">${draft('idea.text').length}/280</div>
   </div>
   <div class="row" style="margin:0.9rem 0">
+    <label for="idea-search" class="sr-only">Zoek in ideeën</label>
+    <input id="idea-search" type="search" value="${attr(S.ui.query ?? '')}" placeholder="Zoek in ideeën…" style="width:min(220px, 100%)">
     <label for="lens-filter" class="small" style="margin:0">Toon</label>
     <select id="lens-filter" data-change="lens-filter" style="width:auto">
       <option value="">Alle perspectieven</option>
@@ -956,10 +993,11 @@ function renderIdeas(b) {
     <label class="row small" style="margin:0 0 0 0.5rem; gap:0.3rem" for="show-parked"><input id="show-parked" type="checkbox" style="width:auto" data-change="toggle-parked" ${S.ui.showParked ? 'checked' : ''}> geparkeerd tonen</label>
     <span class="spacer"></span>
     <span class="small" aria-live="polite">Je hebt nog <strong>${MAX_VOTES - votesUsed}</strong> van ${MAX_VOTES} stemmen</span>
-    ${S.ui.addCluster ? `<input id="new-cluster" data-draft="cluster.name" data-enter="add-cluster" value="${attr(draft('cluster.name'))}" placeholder="Naam van het thema" style="width:200px"><button class="sm primary" data-action="add-cluster">Toevoegen</button><button class="sm ghost" data-action="toggle-add-cluster">Annuleren</button>`
+    ${S.ui.addCluster ? `<input id="new-cluster" maxlength="60" data-draft="cluster.name" data-enter="add-cluster" value="${attr(draft('cluster.name'))}" placeholder="Naam van het thema" style="width:200px"><button class="sm primary" data-action="add-cluster">Toevoegen</button><button class="sm ghost" data-action="toggle-add-cluster">Annuleren</button>`
       : '<button class="sm" data-action="toggle-add-cluster">+ Thema</button>'}
   </div>
   ${renderAiStrip(b)}
+  ${filtering ? `<p class="small" role="status" style="margin:0 0 0.6rem">${visible.length} van ${ideas.length} ideeën zichtbaar. <button class="sm ghost" data-action="clear-filter">Filters wissen</button></p>` : ''}
   ${ideas.length ? `<div class="columns">${clusters.map((c) => {
       const list = sortedIdeas(visible.filter((i) => i.clusterId === c.id || (!clusters.some((x) => x.id === i.clusterId) && c === clusters[0])));
       return `<section class="column">
@@ -988,7 +1026,7 @@ function renderAiStrip(b) {
       <strong>Laat Claude meedenken</strong>
       <span class="muted small">Ideeën vanuit alle vier de perspectieven, ook buiten de ServiceNow-wereld.</span>
       <span class="spacer"></span>
-      <input id="ai-focus" data-draft="ai.focus" value="${attr(draft('ai.focus'))}" placeholder="Optioneel: focus (bijv. zorgsector, Microsoft, AI-agents)" style="max-width:360px">
+      <input id="ai-focus" maxlength="300" data-draft="ai.focus" value="${attr(draft('ai.focus'))}" placeholder="Optioneel: focus (bijv. zorgsector, Microsoft, AI-agents)" style="max-width:360px">
       <button class="primary sm" data-action="ai-ideas" ${S.aiBusy ? 'disabled' : ''}>Genereer ideeën</button>
     </div>
     ${suggestions.length ? `<div class="suggestions">${suggestions.map((s) => `<div class="suggestion">
@@ -1062,6 +1100,7 @@ function renderMatrix() {
             const label = `${x.num}. ${x.idea.text}: impact ${x.impact.toFixed(1)}, inspanning ${x.effort.toFixed(1)}, ${x.n} van 4 partners`;
             return `<button class="dot" style="left:${left}%; bottom:${bottom}%; --c:${color}" data-action="open-idea" data-id="${x.idea.id}" title="${attr(label)}" aria-label="${attr(label)}">${x.num}</button>`;
           }).join('')}
+          ${rated.length ? '' : '<div class="matrix-empty"><span>Nog geen scores. Geef elk idee rechts een score voor impact en inspanning; dan verschijnt het hier.</span></div>'}
         </div>
         <div class="axis"><span>← weinig inspanning</span><span>veel inspanning →</span></div>
       </div>
@@ -1094,7 +1133,7 @@ function renderActions(b) {
         <h2>Besluiten</h2>
         ${decisions.length ? '' : '<p class="muted small">Wat hebben we samen besloten?</p>'}
         <ul style="padding-left:1.1rem">${decisions.map((d) => `<li style="margin-bottom:0.3rem">${esc(d.text)} <span class="muted small">— ${esc(firstName(d.by))}</span> <button class="ghost icon sm" data-action="remove-item" data-id="${d.id}" aria-label="Besluit verwijderen">✕</button></li>`).join('')}</ul>
-        <div class="row"><input id="decision-text" data-draft="decision.text" data-enter="add-decision" value="${attr(draft('decision.text'))}" placeholder="Nieuw besluit…" style="flex:1"><button data-action="add-decision">Toevoegen</button></div>
+        <div class="row"><input id="decision-text" maxlength="500" data-draft="decision.text" data-enter="add-decision" value="${attr(draft('decision.text'))}" placeholder="Nieuw besluit…" style="flex:1"><button data-action="add-decision">Toevoegen</button></div>
       </div>
       <div class="panel">
         <h2>Acties</h2>
@@ -1102,13 +1141,13 @@ function renderActions(b) {
           ${actions.map((a) => `<tr class="${a.done ? 'done' : ''}">
             <td style="width:1.5rem"><input type="checkbox" style="width:auto" aria-label="Afgerond" data-change="toggle-action" data-id="${a.id}" ${a.done ? 'checked' : ''}></td>
             <td class="text">${esc(a.text)}</td>
-            <td>${avatar(a.ownerId, { size: 'sm' })}</td>
-            <td class="muted small">${a.due ? new Date(a.due).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' }) : ''}</td>
+            <td><select data-change="action-owner" data-id="${a.id}" aria-label="${attr(`Eigenaar van ${a.text}`)}">${people.map(({ id }) => `<option value="${attr(id)}" ${a.ownerId === id ? 'selected' : ''}>${esc(firstName(id))}</option>`).join('')}${people.some((x) => x.id === a.ownerId) ? '' : `<option value="${attr(a.ownerId)}" selected>${esc(firstName(a.ownerId))}</option>`}</select></td>
+            <td><input type="date" data-change="action-due" data-id="${a.id}" value="${attr(a.due ?? '')}" aria-label="${attr(`Deadline van ${a.text}`)}"></td>
             <td><button class="ghost icon sm" data-action="remove-item" data-id="${a.id}" aria-label="Actie verwijderen">✕</button></td>
           </tr>`).join('')}
         </tbody></table></div>
         <div class="row" style="margin-top:0.6rem">
-          <input id="action-text" data-draft="action.text" data-enter="add-action" value="${attr(draft('action.text'))}" placeholder="Wat moet er gebeuren?" style="flex:2; min-width:180px">
+          <input id="action-text" maxlength="300" data-draft="action.text" data-enter="add-action" value="${attr(draft('action.text'))}" placeholder="Wat moet er gebeuren?" style="flex:2; min-width:180px">
           <select id="action-owner" data-draft="action.owner" style="flex:1; min-width:110px" aria-label="Eigenaar">
             ${people.map(({ id }) => `<option value="${attr(id)}" ${draft('action.owner', S.me) === id ? 'selected' : ''}>${esc(firstName(id))}</option>`).join('')}
           </select>
@@ -1120,7 +1159,11 @@ function renderActions(b) {
     <div class="panel">
       <h2>Sessienotities</h2>
       <p class="muted small">Gedeeld kladblok. Wordt opgeslagen zodra je buiten het veld klikt.</p>
-      <textarea id="board-notes" data-change="board-notes" rows="18" placeholder="Aantekeningen, links, inzichten…">${esc(b.notes)}</textarea>
+      <div id="notes-status" aria-live="polite">${notesTypers().length ? `<div class="typing">${notesTypers().map((id) => esc(firstName(id))).join(' en ')} ${notesTypers().length === 1 ? 'typt' : 'typen'} ook in de notities.</div>` : ''}${S.notesConflict === 'live' ? `<div class="notes-warning">${esc(firstName(b.notesBy))} heeft de notities net aangepast. Als je straks opslaat, kies je wat er bewaard blijft.</div>` : ''}${S.notesConflict === 'choose' ? `<div class="notes-warning" role="alert">
+        <div>${esc(firstName(b.notesBy))} heeft de notities aangepast terwijl jij typte. Wat wil je bewaren?</div>
+        <div class="row"><button class="sm primary" data-action="notes-both">Beide bewaren</button><button class="sm" data-action="notes-mine">Alleen mijn versie</button><button class="sm" data-action="notes-theirs">Alleen hun versie</button></div>
+      </div>` : ''}</div>
+      <textarea id="board-notes" maxlength="20000" data-change="board-notes" rows="18" placeholder="Aantekeningen, links, inzichten…">${esc(b.notes)}</textarea>
     </div>
   </div>`;
 }
@@ -1145,7 +1188,7 @@ function renderAi(b) {
       </div>
       <div class="row" style="margin-bottom:0.5rem">${ASK_PROMPTS.map((p) => `<button class="chip" data-action="ask-preset" data-q="${attr(p)}" ${S.aiBusy ? 'disabled' : ''}>${esc(p)}</button>`).join('')}</div>
       <div class="row">
-        <textarea id="ai-question" data-draft="ai.question" data-enter="ai-ask" rows="2" placeholder="Stel een vraag…" style="flex:1">${esc(draft('ai.question'))}</textarea>
+        <textarea id="ai-question" maxlength="2000" data-draft="ai.question" data-enter="ai-ask" rows="2" placeholder="Stel een vraag…" style="flex:1">${esc(draft('ai.question'))}</textarea>
         <button class="primary" data-action="ai-ask" ${S.aiBusy ? 'disabled' : ''}>Vraag</button>
       </div>
     </div>
@@ -1176,8 +1219,8 @@ function renderDrawer(b) {
       <button class="ghost" data-action="close-idea" title="Sluiten (Esc)" aria-label="Sluiten">✕</button>
     </div>
     <div class="stack">
-      <textarea id="d-text" class="title" rows="2" data-change="idea-field" data-id="${idea.id}" data-field="text" aria-label="Idee">${esc(idea.text)}</textarea>
-      <textarea id="d-details" rows="3" data-change="idea-field" data-id="${idea.id}" data-field="details" placeholder="Toelichting: wat houdt het in, voor wie, waarom nu?" aria-label="Toelichting">${esc(idea.details)}</textarea>
+      <textarea id="d-text" class="title" maxlength="280" rows="2" data-change="idea-field" data-id="${idea.id}" data-field="text" aria-label="Idee">${esc(idea.text)}</textarea>
+      <textarea id="d-details" maxlength="2000" rows="3" data-change="idea-field" data-id="${idea.id}" data-field="details" placeholder="Toelichting: wat houdt het in, voor wie, waarom nu?" aria-label="Toelichting">${esc(idea.details)}</textarea>
       <div class="row">
         <select id="d-cluster" data-change="idea-field" data-id="${idea.id}" data-field="clusterId" style="flex:1" aria-label="Thema">${(b.clusters ?? []).map((c) => `<option value="${c.id}" ${c.id === idea.clusterId ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select>
         <select id="d-lens" data-change="idea-field" data-id="${idea.id}" data-field="lens" style="flex:1" aria-label="Perspectief">
@@ -1219,9 +1262,9 @@ function renderDrawer(b) {
     </section>` : ''}
     <section>
       <h4>Reacties</h4>
-      ${comments.map(([, c]) => `<div class="comment">${avatar(c.authorId, { size: 'sm' })}<div class="body"><div class="small"><strong>${esc(firstName(c.authorId))}</strong> <span class="muted">${relTime(c.createdAt)}</span></div>${esc(c.text)}</div></div>`).join('')}
+      ${comments.map(([cid, c]) => `<div class="comment">${avatar(c.authorId, { size: 'sm' })}<div class="body"><div class="small"><strong>${esc(firstName(c.authorId))}</strong> <span class="muted">${relTime(c.createdAt)}</span></div>${esc(c.text)}</div>${c.authorId === S.me ? `<button class="ghost icon sm del" data-action="remove-comment" data-id="${idea.id}" data-cid="${attr(cid)}" aria-label="Je reactie verwijderen" title="Verwijderen">✕</button>` : ''}</div>`).join('')}
       <div class="row">
-        <input id="comment-${idea.id}" data-draft="comment.${idea.id}" data-enter="add-comment" data-id="${idea.id}" value="${attr(draft(`comment.${idea.id}`))}" placeholder="Reageer…" style="flex:1">
+        <input id="comment-${idea.id}" maxlength="1000" data-draft="comment.${idea.id}" data-enter="add-comment" data-id="${idea.id}" value="${attr(draft(`comment.${idea.id}`))}" placeholder="Reageer…" style="flex:1">
         <button data-action="add-comment" data-id="${idea.id}">Plaats</button>
       </div>
     </section>
@@ -1244,7 +1287,7 @@ function perspBlock(idea, k, editable) {
     const id = `persp-${k}`;
     return `<div class="persp ${p ? sentiment : ''}" style="--c:${r.color}">
       <label class="persp-head" for="${id}" style="color:var(--text)">${isRole ? `${avatar(S.me, { size: 'sm' })} Jouw blik als ${esc(r.label)}` : esc(r.label)}</label>
-      <textarea rows="3" id="${id}" data-change="perspective" data-key="${k}" data-id="${idea.id}" placeholder="${attr(r.questions.join(' '))}">${esc(p?.text ?? '')}</textarea>
+      <textarea rows="3" id="${id}" data-change="perspective" maxlength="2000" data-key="${k}" data-id="${idea.id}" placeholder="${attr(r.questions.join(' '))}">${esc(p?.text ?? '')}</textarea>
       <div class="row" style="margin-top:0.4rem"><span class="muted small" id="${id}-oordeel">Oordeel:</span>
         <div class="segmented" role="group" aria-labelledby="${id}-oordeel">${['kans', 'neutraal', 'zorg'].map((x) => `<button class="${p && sentiment === x ? 'on' : ''}" aria-pressed="${!!p && sentiment === x}" data-action="sentiment" data-key="${k}" data-id="${idea.id}" data-sentiment="${x}">${sentimentLabel(x)}</button>`).join('')}</div>
       </div>
@@ -1297,6 +1340,19 @@ function tickTimer() {
 // ---------------------------------------------------------------------------
 // Markdown-export
 // ---------------------------------------------------------------------------
+function notesTypers() {
+  return [...new Set(S.peers.filter((p) => !p.isMe && p.by && p.by !== S.me && p.presence?.board === S.board && p.presence?.editing === 'notes').map((p) => p.by))];
+}
+function saveNotes(text) {
+  if (text != null) touchBoard({ notes: text.slice(0, 20_000), notesBy: S.me });
+  const el = document.getElementById('board-notes');
+  if (el) el.value = text ?? board()?.notes ?? '';
+  S.notesBase = text ?? board()?.notes ?? '';
+  S.pendingNotes = null;
+  S.notesConflict = null;
+  render();
+}
+
 function boardMarkdown(b) {
   const out = [`# ${b.title}`, ''];
   if (b.question) out.push(`**Centrale vraag:** ${b.question}`, '');
@@ -1401,6 +1457,12 @@ const actions = {
   'open-board'(el) { go(el.dataset.id); },
   'change-role'() { S.ui.changeRole = true; render(); },
   'cancel-role'() { S.ui.changeRole = false; render(); },
+  async 'no-role'() {
+    if (S.readOnly || S.canWrite === false) return toast('Je hebt alleen leesrechten.');
+    await setDoc(`members/${S.me}`, { role: null, joinedAt: S.members[S.me]?.joinedAt ?? nowIso() });
+    S.ui.changeRole = false;
+    render();
+  },
   async 'pick-role'(el) {
     if (S.readOnly || S.canWrite === false) return toast('Je hebt alleen leesrechten.');
     const role = el.dataset.role;
@@ -1435,6 +1497,7 @@ const actions = {
     setDoc(`opportunities/${newId('opportunities')}`, { title: title.slice(0, 200), description: '', stage: 'verkennen', ownerId: S.me, source: null, createdAt: nowIso() });
     clearDraft('opp.title');
   },
+  'edit-opp'(el) { S.ui.editOpp = el.dataset.id || null; render(); if (S.ui.editOpp) document.getElementById(`opp-desc-${S.ui.editOpp}`)?.focus(); },
   'remove-opportunity'(el) {
     if (!guardWrite()) return;
     confirmModal('Kans verwijderen?', 'Deze kans verdwijnt van de radar voor het hele team.', 'Verwijderen', () => deleteDoc(`opportunities/${el.dataset.id}`));
@@ -1486,6 +1549,7 @@ const actions = {
     touchBoard();
     clearDraft('idea.text');
   },
+  'clear-filter'() { S.ui.query = ''; S.ui.lensFilter = null; const el = document.getElementById('idea-search'); if (el) el.value = ''; render(); },
   'toggle-add-cluster'() { S.ui.addCluster = !S.ui.addCluster; render(); },
   'add-cluster'() {
     if (!guardWrite()) return;
@@ -1531,6 +1595,11 @@ const actions = {
     render();
   },
   'close-idea'() { S.ui.openIdea = null; render(); },
+  'quick-shortlist'(el) {
+    if (!guardWrite()) return;
+    const idea = boardIdeas().find((i) => i.id === el.dataset.id);
+    if (idea) updateDoc(`ideas/${idea.id}`, { status: idea.status === 'shortlist' ? 'open' : 'shortlist' });
+  },
   'idea-status'(el) { if (guardWrite()) updateDoc(`ideas/${el.dataset.id}`, { status: el.dataset.status }); },
   sentiment(el) {
     if (!guardWrite()) return;
@@ -1591,6 +1660,17 @@ const actions = {
     const due = draft('action.due');
     setDoc(`items/${newId('items')}`, { boardId: S.board, kind: 'action', text: text.slice(0, 300), ownerId: draft('action.owner', S.me), due: /^\d{4}-\d{2}-\d{2}$/.test(due) ? due : '', done: false, by: S.me, createdAt: nowIso() });
     clearDraft('action.text', 'action.due');
+  },
+  'notes-both'() {
+    const merged = `${board()?.notes ?? ''}\n\n--- Toegevoegd door ${firstName(S.me)} ---\n${S.pendingNotes ?? ''}`;
+    saveNotes(merged);
+  },
+  'notes-mine'() { saveNotes(S.pendingNotes ?? ''); },
+  'notes-theirs'() { saveNotes(null); },
+  'remove-comment'(el) {
+    if (!guardWrite()) return;
+    updateDoc(`ideas/${el.dataset.id}`, { comments: { [el.dataset.cid]: null } });
+    toast('Reactie verwijderd.');
   },
   'remove-item'(el) { if (guardWrite()) deleteDoc(`items/${el.dataset.id}`); },
   async 'copy-md'() {
@@ -1695,7 +1775,19 @@ function askClaude(question) {
 
 const changeHandlers = {
   'board-field'(el) { if (guardWrite()) { const v = el.value.trim(); if (el.dataset.field === 'title' && !v) return; touchBoard({ [el.dataset.field]: v.slice(0, el.dataset.field === 'description' ? 2000 : 500) }); } },
-  'board-notes'(el) { if (guardWrite()) touchBoard({ notes: el.value.slice(0, 20_000) }); },
+  'board-notes'(el) {
+    if (!guardWrite()) return;
+    const remote = board()?.notes ?? '';
+    if (S.notesBase != null && remote !== S.notesBase && el.value !== remote) {
+      S.pendingNotes = el.value;
+      S.notesConflict = 'choose';
+      render();
+      return;
+    }
+    touchBoard({ notes: el.value.slice(0, 20_000), notesBy: S.me });
+    S.notesBase = el.value;
+    S.notesConflict = null;
+  },
   'idea-field'(el) {
     if (!guardWrite()) return;
     let v = el.value;
@@ -1722,6 +1814,9 @@ const changeHandlers = {
     updateDoc(`items/${el.dataset.id}`, { done: !a?.done });
   },
   'opp-stage'(el) { if (guardWrite()) updateDoc(`opportunities/${el.dataset.id}`, { stage: el.value }); },
+  'action-owner'(el) { if (guardWrite()) updateDoc(`items/${el.dataset.id}`, { ownerId: el.value }); },
+  'action-due'(el) { if (guardWrite()) updateDoc(`items/${el.dataset.id}`, { due: /^\d{4}-\d{2}-\d{2}$/.test(el.value) ? el.value : '' }); },
+  'opp-desc'(el) { if (guardWrite()) updateDoc(`opportunities/${el.dataset.id}`, { description: el.value.slice(0, 4000) }); },
   'opp-owner'(el) { if (guardWrite()) updateDoc(`opportunities/${el.dataset.id}`, { ownerId: el.value }); },
 };
 
@@ -1732,7 +1827,25 @@ root.addEventListener('click', (e) => {
   if (el.classList.contains('modal-backdrop') && e.target.closest('.modal')) return;
   actions[el.dataset.action]?.(el, e);
 });
-root.addEventListener('input', (e) => { const k = e.target.dataset?.draft; if (k) S.drafts[k] = e.target.value; });
+root.addEventListener('input', (e) => {
+  const el = e.target;
+  const k = el.dataset?.draft;
+  if (k) S.drafts[k] = el.value;
+  if (el.dataset?.counter) { const c = document.getElementById(el.dataset.counter); if (c) c.textContent = `${el.value.length}/${el.maxLength}`; }
+  if (el.id === 'idea-search') { S.ui.query = el.value; render(); }
+});
+root.addEventListener('focusin', (e) => {
+  if (e.target.id === 'board-notes') {
+    S.notesBase = board()?.notes ?? '';
+    S.cap.room?.presence({ board: S.board ?? null, editing: 'notes' }).catch(() => {});
+  }
+});
+root.addEventListener('focusout', (e) => {
+  if (e.target.id === 'board-notes') {
+    S.cap.room?.presence({ board: S.board ?? null, editing: null }).catch(() => {});
+    if (S.notesConflict === 'live') S.notesConflict = null;
+  }
+});
 root.addEventListener('change', (e) => {
   const el = e.target;
   if (el.dataset.draft) { S.drafts[el.dataset.draft] = el.value; return; }
@@ -1768,7 +1881,7 @@ async function start() {
   }
   if (db) subscribe();
   if (room) {
-    room.onPeers(({ peers }) => { S.peers = peers.filter((p) => p.kind === 'viewer'); scheduleProfiles(); render(); }, () => {});
+    room.onPeers(({ peers }) => { S.peers = peers.filter((p) => p.kind === 'viewer'); scheduleProfiles(); queueMicrotask(render); }, () => {});
     room.presence({ board: S.board ?? null }).catch(() => {});
   }
   render();
