@@ -26,7 +26,18 @@ Een realtime brainstorm- en sparringapp voor ons partnerteam. We komen allemaal 
 - **Realtime**: je ziet wie er online is en wie er in een sessie zit. Wijzigingen verschijnen direct bij iedereen.
 - **Export** van een sessie naar Markdown, handig voor Confluence, Notion of e-mail.
 
-## Snel starten
+## Direct gebruiken in claude.ai (zonder server)
+
+`artifact/brainstorm.html` is dezelfde app als Artifact voor claude.ai. Die versie heeft geen eigen server nodig:
+
+- **Opslag**: de gedeelde opslag van het Artifact.
+- **Inloggen**: ieders claude.ai-account; iedereen kiest bij het eerste bezoek een rol.
+- **Aanwezigheid**: je ziet live wie er online is.
+- **AI**: Claude draait op het eigen account van wie op een AI-knop klikt. Er is geen API-sleutel nodig.
+
+Delen gaat via de knop **Delen** in claude.ai. Geef partners minstens schrijfrechten; met alleen leesrechten kunnen ze meekijken maar niets toevoegen.
+
+## Snel starten (eigen server)
 
 Je hebt Node.js 20 of nieuwer nodig.
 

@@ -1,0 +1,1567 @@
+<title>Brainstorm</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap">
+<style>
+/* Layout: werkbord — vaste balk boven, brede kolommen met ideeën, lade rechts voor detail. */
+:root {
+  --bg: #f5f6f4;
+  --surface: #ffffff;
+  --surface-2: #eef0ec;
+  --border: #dde1da;
+  --text: #1b211d;
+  --muted: #5f6b63;
+  --accent: #0f766e;
+  --accent-ink: #ffffff;
+  --accent-soft: #e2f1ee;
+  --danger: #c2410c;
+  --warn: #b45309;
+  --kans: #dcf3e3;
+  --kans-text: #166534;
+  --zorg: #fde7dc;
+  --zorg-text: #9a3412;
+  --neutraal: #edf0ec;
+  --shadow: 0 1px 2px rgba(20, 30, 25, 0.06), 0 1px 3px rgba(20, 30, 25, 0.08);
+  --shadow-lg: 0 12px 32px rgba(20, 30, 25, 0.18);
+  --scrim: rgba(15, 20, 18, 0.35);
+  --radius: 10px;
+  --font-body: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-display: 'Space Grotesk', 'Inter', system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #101412; --surface: #171c19; --surface-2: #1f2521; --border: #2c3430; --text: #e5ebe7; --muted: #9aa8a0;
+    --accent: #2dd4bf; --accent-ink: #062a26; --accent-soft: #143430; --danger: #fb923c; --warn: #fbbf24;
+    --kans: #133222; --kans-text: #86efac; --zorg: #3a1d12; --zorg-text: #fdba74; --neutraal: #222924;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.4); --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.55); --scrim: rgba(0, 0, 0, 0.5);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #101412; --surface: #171c19; --surface-2: #1f2521; --border: #2c3430; --text: #e5ebe7; --muted: #9aa8a0;
+  --accent: #2dd4bf; --accent-ink: #062a26; --accent-soft: #143430; --danger: #fb923c; --warn: #fbbf24;
+  --kans: #133222; --kans-text: #86efac; --zorg: #3a1d12; --zorg-text: #fdba74; --neutraal: #222924;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.4); --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.55); --scrim: rgba(0, 0, 0, 0.5);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body { font: 15px/1.5 var(--font-body); background: var(--bg); color: var(--text); margin: 0; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 30; background: var(--surface); }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+h1, h2, h3, h4 { font-family: var(--font-display); margin: 0 0 0.4em; line-height: 1.2; text-wrap: balance; }
+h2 { font-size: 1.15rem; }
+h3 { font-size: 1rem; }
+p { margin: 0 0 0.6em; }
+.muted { color: var(--muted); }
+.small { font-size: 0.85rem; }
+.loading { padding: 4rem 1rem; text-align: center; color: var(--muted); }
+code { font-size: 0.9em; background: var(--surface-2); padding: 0.05em 0.3em; border-radius: 4px; }
+
+button, .btn {
+  font: inherit; cursor: pointer; border: 1px solid var(--border); background: var(--surface); color: var(--text);
+  border-radius: 8px; padding: 0.4rem 0.8rem; display: inline-flex; align-items: center; gap: 0.35rem; white-space: nowrap;
+}
+button:hover:not(:disabled) { background: var(--surface-2); }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
+button.primary:hover:not(:disabled) { background: var(--accent); filter: brightness(1.08); }
+button.ghost { border-color: transparent; background: transparent; }
+button.ghost:hover:not(:disabled) { background: var(--surface-2); }
+button.danger { color: var(--danger); }
+button.icon { padding: 0.2rem 0.45rem; }
+button.sm { padding: 0.2rem 0.55rem; font-size: 0.85rem; }
+input, textarea, select {
+  font: inherit; color: var(--text); background: var(--surface); border: 1px solid var(--border);
+  border-radius: 8px; padding: 0.45rem 0.6rem; width: 100%; min-width: 0;
+}
+textarea { resize: vertical; min-height: 2.6rem; }
+input:focus, textarea:focus, select:focus, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+label { font-size: 0.85rem; color: var(--muted); display: block; margin-bottom: 0.2rem; }
+
+.appbar {
+  display: flex; align-items: center; gap: 0.75rem; background: var(--surface); border-bottom: 1px solid var(--border);
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; padding-block: 0.6rem;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.brand { font-family: var(--font-display); font-weight: 700; font-size: 1.1rem; color: var(--text); display: flex; gap: 0.45rem; align-items: center; }
+.brand:hover { text-decoration: none; }
+.brand .mark { width: 22px; height: 22px; border-radius: 6px; background: var(--accent); display: grid; place-items: center; color: var(--accent-ink); font-size: 0.8rem; }
+.spacer { flex: 1; }
+.page { max-width: 1400px; margin: 0 auto; padding-block: 1.25rem 3rem; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.row { display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap; }
+.stack { display: flex; flex-direction: column; gap: 0.6rem; }
+.grid-2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1.25rem; }
+@media (max-width: 900px) { .grid-2 { grid-template-columns: minmax(0, 1fr); } }
+.panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; min-width: 0; }
+.section { margin-bottom: 2rem; }
+.section-head { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem; flex-wrap: wrap; }
+.section-head h2 { margin: 0; }
+.banner { padding: 0.6rem 0.9rem; border-radius: 8px; background: var(--accent-soft); color: var(--text); margin-bottom: 1rem; font-size: 0.9rem; }
+.banner.warn { background: var(--zorg); color: var(--zorg-text); }
+
+.avatar {
+  --c: var(--accent); display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 50%;
+  background: var(--c); color: #fff; font-size: 0.7rem; font-weight: 700; flex: none; position: relative;
+  box-shadow: 0 0 0 2px var(--surface), 0 0 0 3.5px var(--c); overflow: visible;
+}
+.avatar img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; display: block; }
+.avatar.sm { width: 22px; height: 22px; font-size: 0.6rem; }
+.avatar.lg { width: 44px; height: 44px; font-size: 0.95rem; }
+.avatar.offline { opacity: 0.4; }
+.avatar.online::after { content: ''; position: absolute; right: -3px; bottom: -3px; width: 9px; height: 9px; border-radius: 50%; background: #22c55e; border: 2px solid var(--surface); }
+.avatars { display: flex; gap: 0.45rem; align-items: center; }
+.tag { --c: var(--muted); display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.72rem; font-weight: 600; padding: 0.1rem 0.5rem; border-radius: 999px; color: var(--c); background: color-mix(in srgb, var(--c) 14%, transparent); }
+.badge { font-size: 0.72rem; padding: 0.1rem 0.5rem; border-radius: 999px; background: var(--surface-2); color: var(--muted); border: 1px solid var(--border); }
+.badge.accent { background: var(--accent-soft); color: var(--accent); border-color: transparent; }
+
+/* Onboarding */
+.center { min-height: 70vh; display: grid; place-items: center; padding-block: 2rem; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.center .panel { max-width: 680px; width: 100%; }
+.role-pick { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; margin-top: 1rem; }
+@media (max-width: 560px) { .role-pick { grid-template-columns: minmax(0, 1fr); } }
+.role-pick button { justify-content: flex-start; padding: 0.9rem; text-align: left; gap: 0.75rem; white-space: normal; border-left: 4px solid var(--c); }
+.role-pick button strong { display: block; }
+
+/* Home */
+.hero { display: flex; align-items: flex-end; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+.hero h1 { font-size: 1.7rem; margin: 0; }
+.board-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr)); gap: 0.9rem; }
+.board-card { display: flex; flex-direction: column; gap: 0.4rem; color: var(--text); text-align: left; white-space: normal; align-items: stretch; padding: 1rem; }
+.board-card:hover { box-shadow: var(--shadow-lg); }
+.board-card h3 { margin: 0; }
+.board-card .q { color: var(--muted); font-size: 0.9rem; flex: 1; }
+.template-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(190px, 100%), 1fr)); gap: 0.6rem; margin-bottom: 0.9rem; }
+.template { display: block; text-align: left; white-space: normal; padding: 0.75rem; }
+.template.selected { border-color: var(--accent); background: var(--accent-soft); }
+.template strong { display: block; margin-bottom: 0.2rem; }
+.team-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr)); gap: 0.9rem; }
+.team-card { border-top: 4px solid var(--c); }
+.team-card ul { margin: 0.4rem 0 0; padding-left: 1.1rem; color: var(--muted); font-size: 0.85rem; }
+.kanban-wrap { overflow-x: auto; }
+.kanban { display: grid; grid-template-columns: repeat(4, minmax(220px, 1fr)); gap: 0.9rem; min-width: 920px; }
+.kanban-col { background: var(--surface-2); border-radius: var(--radius); padding: 0.75rem; min-height: 140px; }
+.kanban-col h3 { display: flex; justify-content: space-between; font-size: 0.9rem; }
+.opp { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 0.6rem; margin-bottom: 0.5rem; }
+.opp-title { font-weight: 600; margin-bottom: 0.25rem; }
+.opp select { width: auto; padding: 0.15rem 0.3rem; font-size: 0.8rem; }
+
+/* Board */
+.board-head { display: flex; gap: 1rem; align-items: flex-start; flex-wrap: wrap; margin-bottom: 1rem; }
+.board-head h1 { font-size: 1.5rem; margin: 0; }
+.board-head .question { font-size: 1.05rem; color: var(--muted); margin-top: 0.2rem; }
+.head-side { display: flex; flex-direction: column; gap: 0.6rem; align-items: flex-end; }
+@media (max-width: 700px) { .head-side { align-items: flex-start; } }
+.phases { display: flex; gap: 0.3rem; flex-wrap: wrap; margin-bottom: 0.3rem; }
+.phase { border-radius: 999px; font-size: 0.82rem; padding: 0.25rem 0.75rem; }
+.phase.done { color: var(--muted); }
+.phase.current { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.phase .n { font-weight: 700; opacity: 0.75; }
+.timer { font-variant-numeric: tabular-nums; font-weight: 700; padding: 0.2rem 0.6rem; border-radius: 8px; background: var(--surface-2); }
+.timer.ending { background: var(--zorg); color: var(--zorg-text); }
+.tabs { display: flex; gap: 0.25rem; border-bottom: 1px solid var(--border); margin: 1rem 0; overflow-x: auto; }
+.tab { border: none; border-bottom: 2px solid transparent; border-radius: 0; background: none; padding: 0.55rem 0.9rem; color: var(--muted); }
+.tab:hover:not(:disabled) { background: none; color: var(--text); }
+.tab.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
+
+.composer { display: grid; grid-template-columns: minmax(0, 1fr) 180px 190px auto; gap: 0.5rem; align-items: start; }
+@media (max-width: 800px) { .composer { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .composer textarea { grid-column: 1 / -1; } }
+.chip { border-radius: 999px; font-size: 0.82rem; padding: 0.2rem 0.7rem; white-space: normal; text-align: left; }
+.chip.active { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+.columns { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(270px, 1fr); gap: 0.9rem; overflow-x: auto; padding-bottom: 1rem; align-items: start; }
+.column { background: var(--surface-2); border-radius: var(--radius); padding: 0.6rem; }
+.column-head { display: flex; align-items: center; gap: 0.3rem; padding: 0.2rem 0.3rem 0.6rem; }
+.column-head h3 { margin: 0; font-size: 0.92rem; flex: 1; }
+.card { background: var(--surface); border: 1px solid var(--border); border-left: 4px solid var(--c, var(--border)); border-radius: 8px; padding: 0.6rem 0.7rem; margin-bottom: 0.55rem; cursor: pointer; box-shadow: var(--shadow); }
+.card:hover { box-shadow: var(--shadow-lg); }
+.card.shortlist { outline: 2px solid color-mix(in srgb, var(--warn) 55%, transparent); }
+.card.geparkeerd { opacity: 0.55; }
+.card-text { margin: 0.3rem 0 0.5rem; white-space: pre-wrap; word-break: break-word; }
+.card-foot { display: flex; align-items: center; gap: 0.5rem; font-size: 0.8rem; color: var(--muted); }
+.pdots { display: inline-flex; gap: 3px; }
+.pdot { width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid var(--c); }
+.pdot.on { background: var(--c); }
+.votes { display: inline-flex; align-items: center; gap: 0.15rem; margin-left: auto; }
+.votes button { padding: 0 0.4rem; font-size: 0.8rem; line-height: 1.5; }
+.votes .count { min-width: 1.4rem; text-align: center; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
+.votes .mine { color: var(--accent); }
+.ai-strip { border: 1px dashed var(--accent); background: var(--accent-soft); border-radius: var(--radius); padding: 0.75rem; margin: 0.9rem 0; }
+.suggestions { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr)); gap: 0.6rem; margin-top: 0.7rem; }
+.suggestion { background: var(--surface); border-radius: 8px; padding: 0.6rem; border: 1px solid var(--border); display: flex; flex-direction: column; gap: 0.35rem; }
+.suggestion p { margin: 0; }
+.ai-busy { display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.8rem; border-radius: 8px; background: var(--accent-soft); color: var(--accent); font-weight: 600; margin-bottom: 0.75rem; }
+.spinner { width: 14px; height: 14px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spinner { animation: none; } }
+
+.drawer-backdrop { position: fixed; inset: 0; background: var(--scrim); z-index: 40; }
+.drawer {
+  position: fixed; top: 0; right: 0; bottom: 0; width: min(620px, 100vw); background: var(--surface); z-index: 41; box-shadow: var(--shadow-lg);
+  overflow-y: auto; display: flex; flex-direction: column; gap: 1.1rem;
+  padding: calc(env(safe-area-inset-top, 0px) + 1.1rem) max(1.25rem, env(safe-area-inset-right, 0px)) calc(env(safe-area-inset-bottom, 0px) + 3rem) 1.25rem;
+}
+.drawer h4 { margin-bottom: 0.5rem; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); font-family: var(--font-body); }
+.drawer textarea.title { font-size: 1.1rem; font-weight: 600; }
+.segmented { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.segmented button { border: none; border-radius: 0; padding: 0.25rem 0.7rem; font-size: 0.85rem; }
+.segmented button + button { border-left: 1px solid var(--border); }
+.segmented button.on { background: var(--accent); color: var(--accent-ink); }
+.persp { border: 1px solid var(--border); border-left: 4px solid var(--c); border-radius: 8px; padding: 0.6rem 0.75rem; }
+.persp-head { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.35rem; font-weight: 600; font-size: 0.9rem; flex-wrap: wrap; }
+.persp.kans { background: var(--kans); }
+.persp.zorg { background: var(--zorg); }
+.sentiment-kans { color: var(--kans-text); }
+.sentiment-zorg { color: var(--zorg-text); }
+.scale { display: inline-flex; gap: 0.2rem; }
+.scale button { width: 2rem; justify-content: center; padding: 0.2rem 0; }
+.scale button.on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.comment { display: flex; gap: 0.5rem; margin-bottom: 0.5rem; }
+.comment .body { background: var(--surface-2); padding: 0.4rem 0.6rem; border-radius: 8px; flex: 1; min-width: 0; }
+.challenge { background: var(--accent-soft); border-radius: 8px; padding: 0.75rem; font-size: 0.92rem; }
+.challenge ul { margin: 0.2rem 0 0.6rem; padding-left: 1.1rem; }
+
+.lens-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.75rem; margin-bottom: 1rem; }
+@media (max-width: 1000px) { .lens-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 520px) { .lens-grid { grid-template-columns: minmax(0, 1fr); } }
+.lens-card { border-top: 4px solid var(--c); font-size: 0.85rem; }
+.lens-card ul { margin: 0.3rem 0 0; padding-left: 1rem; color: var(--muted); }
+.table-scroll { overflow-x: auto; }
+.ptable { width: 100%; min-width: 760px; border-collapse: separate; border-spacing: 0.4rem; table-layout: fixed; }
+.ptable th { text-align: left; font-size: 0.82rem; color: var(--muted); font-weight: 600; }
+.ptable th.idea-col { width: 24%; }
+.ptable td { vertical-align: top; }
+.pcell { background: var(--neutraal); border-radius: 8px; padding: 0.45rem 0.55rem; font-size: 0.84rem; min-height: 3.2rem; cursor: pointer; border: 1px solid transparent; display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden; }
+.pcell:hover { border-color: var(--accent); }
+.pcell.idea { background: var(--surface-2); }
+.pcell.kans { background: var(--kans); color: var(--kans-text); }
+.pcell.zorg { background: var(--zorg); color: var(--zorg-text); }
+.pcell.empty { background: transparent; border: 1px dashed var(--border); color: var(--muted); }
+.pcell.mine.empty { border-color: var(--accent); color: var(--accent); }
+
+.matrix-wrap { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 1.25rem; }
+@media (max-width: 1000px) { .matrix-wrap { grid-template-columns: minmax(0, 1fr); } }
+.matrix { position: relative; aspect-ratio: 1 / 0.85; max-width: 100%; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; background: var(--surface); }
+.quad { padding: 0.6rem; font-size: 0.8rem; font-weight: 600; color: var(--muted); }
+.quad:nth-child(1) { background: color-mix(in srgb, #16a34a 10%, transparent); }
+.quad:nth-child(2) { background: color-mix(in srgb, var(--accent) 8%, transparent); text-align: right; }
+.quad:nth-child(3) { background: color-mix(in srgb, var(--muted) 6%, transparent); display: flex; align-items: flex-end; }
+.quad:nth-child(4) { background: color-mix(in srgb, var(--danger) 8%, transparent); display: flex; align-items: flex-end; justify-content: flex-end; }
+.dot { position: absolute; transform: translate(-50%, 50%); min-width: 28px; height: 28px; padding: 0 4px; border-radius: 999px; display: grid; place-items: center; background: var(--c, var(--accent)); color: #fff; font-size: 0.75rem; font-weight: 700; border: 2px solid var(--surface); cursor: pointer; box-shadow: var(--shadow); }
+.axis { font-size: 0.78rem; color: var(--muted); display: flex; justify-content: space-between; margin-top: 0.3rem; }
+.rate-row { display: grid; grid-template-columns: 1.6rem minmax(0, 1fr) auto; gap: 0.5rem; align-items: center; padding: 0.45rem 0; border-bottom: 1px solid var(--border); }
+.rate-row .scales { display: flex; flex-direction: column; gap: 0.2rem; align-items: flex-end; font-size: 0.75rem; color: var(--muted); }
+.rate-row .scale button { width: 1.6rem; font-size: 0.75rem; padding: 0.05rem 0; }
+@media (max-width: 520px) { .rate-row { grid-template-columns: 1.6rem minmax(0, 1fr); } .rate-row .scales { grid-column: 1 / -1; align-items: flex-start; } }
+.num { display: inline-grid; place-items: center; width: 1.5rem; height: 1.5rem; border-radius: 50%; background: var(--surface-2); font-size: 0.75rem; font-weight: 700; }
+table.list { width: 100%; border-collapse: collapse; }
+table.list th, table.list td { text-align: left; padding: 0.45rem 0.4rem; border-bottom: 1px solid var(--border); font-size: 0.9rem; }
+table.list th { color: var(--muted); font-weight: 600; font-size: 0.8rem; }
+table.list td.n { font-variant-numeric: tabular-nums; }
+tr.done td.text { text-decoration: line-through; color: var(--muted); }
+
+.thread { display: flex; flex-direction: column; gap: 0.9rem; max-height: 60vh; overflow-y: auto; margin-bottom: 0.75rem; }
+.q-bubble { align-self: flex-end; background: var(--accent); color: var(--accent-ink); padding: 0.5rem 0.75rem; border-radius: 12px 12px 2px 12px; max-width: 85%; }
+.a-bubble { background: var(--surface-2); padding: 0.6rem 0.85rem; border-radius: 12px 12px 12px 2px; max-width: 95%; min-width: 0; }
+.md h3 { font-size: 0.98rem; margin-top: 0.8rem; }
+.md ul, .md ol { padding-left: 1.2rem; margin: 0.3rem 0 0.6rem; }
+.md p:last-child { margin-bottom: 0; }
+.empty-state { text-align: center; padding: 2rem 1rem; color: var(--muted); }
+
+.modal-backdrop { position: fixed; inset: 0; background: var(--scrim); z-index: 60; display: grid; place-items: center; padding: 1rem; }
+.modal { background: var(--surface); border-radius: var(--radius); padding: 1.1rem; width: min(440px, 100%); box-shadow: var(--shadow-lg); display: flex; flex-direction: column; gap: 0.8rem; }
+#toasts { position: fixed; bottom: calc(env(safe-area-inset-bottom, 0px) + 1rem); left: 50%; transform: translateX(-50%); z-index: 100; display: flex; flex-direction: column; gap: 0.5rem; width: max-content; max-width: calc(100vw - 32px); }
+.toast { background: var(--text); color: var(--bg); padding: 0.55rem 1rem; border-radius: 8px; box-shadow: var(--shadow-lg); font-size: 0.9rem; }
+.toast.error { background: var(--danger); color: #fff; }
+@media (max-width: 640px) { .hide-sm { display: none !important; } }
+</style>
+
+<div id="app"><div class="loading">Brainstorm laden…</div></div>
+<div id="toasts" aria-live="polite"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/morphdom@2.7.8/dist/morphdom-umd.min.js"></script>
+<script>
+(() => {
+'use strict';
+
+// ---------------------------------------------------------------------------
+// Inhoud: rollen, fasen en werkvormen
+// ---------------------------------------------------------------------------
+const ROLES = {
+  ea: { label: 'Enterprise Architect', short: 'EA', color: '#2563eb', lens: 'Landschap & strategie', questions: [
+    'Hoe past dit in het bredere IT- en bedrijfslandschap van de klant?',
+    'Welke capabilities raken we, en waar zitten overlap of gaten?',
+    'Is dit platform-onafhankelijk te maken, of creëren we nieuwe lock-in?',
+    'Welke principes, standaarden en governance zijn nodig?'] },
+  pm: { label: 'Product Manager', short: 'PM', color: '#16a34a', lens: 'Klantwaarde & markt', questions: [
+    'Welk probleem lossen we op, en voor wie precies?',
+    'Waarom zou een klant hier nú voor betalen?',
+    'Wat is de kleinste versie waarmee we het kunnen valideren?',
+    'Wie zijn de concurrenten en wat is ons onderscheidend vermogen?'] },
+  hr: { label: 'HR / Business Lead', short: 'BL', color: '#d97706', lens: 'Mensen, organisatie & business case', questions: [
+    'Welke mensen en competenties hebben we hiervoor nodig?',
+    'Wat betekent dit voor ons verdienmodel en onze marges?',
+    'Past dit bij onze cultuur en hoe we willen samenwerken?',
+    "Welke commerciële en organisatorische risico's zien we?"] },
+  sa: { label: 'Solution Architect', short: 'SA', color: '#9333ea', lens: 'Haalbaarheid & oplossing', questions: [
+    'Is dit technisch haalbaar, en met welke bouwstenen?',
+    'Welke integraties, data en security-aspecten spelen er?',
+    'Wat kunnen we hergebruiken uit onze ServiceNow-ervaring?',
+    'Waar zitten de grootste technische onzekerheden?'] },
+};
+const ROLE_KEYS = Object.keys(ROLES);
+const PHASES = [
+  { key: 'verkennen', label: 'Verkennen', hint: 'Context en vraag scherp krijgen.' },
+  { key: 'ideeen', label: 'Ideeën genereren', hint: 'Kwantiteit boven kwaliteit. Nog niet oordelen.' },
+  { key: 'perspectieven', label: 'Perspectieven', hint: 'Elke rol bekijkt de beste ideeën door de eigen bril.' },
+  { key: 'prioriteren', label: 'Prioriteren', hint: 'Stemmen en scoren op impact en inspanning.' },
+  { key: 'besluiten', label: 'Besluiten & acties', hint: 'Wat doen we, wie pakt het op, wanneer?' },
+];
+const STAGES = [
+  { key: 'verkennen', label: 'Verkennen' }, { key: 'valideren', label: 'Valideren' },
+  { key: 'bouwen', label: 'Bouwen' }, { key: 'geparkeerd', label: 'Geparkeerd' },
+];
+const TEMPLATES = [
+  { key: 'horizon', title: 'Horizon verbreden', question: 'Op welke gebieden naast ServiceNow kunnen wij als team waarde toevoegen?',
+    description: 'Verken nieuwe platformen, markten en diensten die aansluiten op onze gezamenlijke kennis van architectuur, product, mensen en oplossingen.',
+    clusters: ['Andere platformen', 'Nieuwe markten / sectoren', 'Nieuwe diensten', 'AI & data', 'Eigen producten'] },
+  { key: 'propositie', title: 'Nieuwe propositie ontwerpen', question: 'Hoe ziet een aantrekkelijke propositie eruit voor [doelgroep]?',
+    description: 'Werk één kans uit tot een propositie: probleem, oplossing, waarde, verdienmodel en eerste stap.',
+    clusters: ['Klantprobleem', 'Oplossing', 'Waardepropositie', 'Verdienmodel', 'Eerste experiment'] },
+  { key: 'samenwerking', title: 'Ons samenwerkingsmodel', question: 'Hoe willen wij als vier partners samenwerken en groeien?',
+    description: 'Rollen, verantwoordelijkheden, besluitvorming, verdeling en ambities van het partnerschap.',
+    clusters: ['Rollen & verantwoordelijkheden', 'Besluitvorming', 'Financieel model', 'Groei & mensen', 'Cultuur & waarden'] },
+  { key: 'premortem', title: 'Pre-mortem', question: 'Stel: over een jaar is dit initiatief mislukt. Wat is er gebeurd?',
+    description: "Benoem vooraf de risico's vanuit elk perspectief en bedenk maatregelen.",
+    clusters: ['Markt & klant', 'Techniek', 'Mensen & organisatie', 'Financieel', 'Maatregelen'] },
+  { key: 'vrij', title: 'Vrije brainstorm', question: '', description: '', clusters: ['Ideeën'] },
+];
+const MAX_VOTES = 5;
+
+// ---------------------------------------------------------------------------
+// Toestand
+// ---------------------------------------------------------------------------
+const S = {
+  cap: {}, me: null, canWrite: null, readOnly: false,
+  members: {}, boards: [], ideas: [], items: [], opps: [],
+  loaded: new Set(), slow: false, dbError: null,
+  profiles: {}, peers: [],
+  board: null, tab: 'ideeen',
+  ui: { openIdea: null, lensFilter: null, showParked: false, showArchived: false, newBoard: false, template: 'horizon', editHeader: false, addCluster: false, renameCluster: null, changeRole: false },
+  drafts: {}, aiBusy: null, aiStream: '', modal: null,
+};
+const root = document.getElementById('app');
+const COLLECTIONS = ['members', 'boards', 'ideas', 'items', 'opportunities'];
+
+// ---------------------------------------------------------------------------
+// Hulpfuncties
+// ---------------------------------------------------------------------------
+const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+const attr = esc;
+const sum = (o) => Object.values(o ?? {}).reduce((a, b) => a + (Number(b) || 0), 0);
+const avg = (l) => { const v = l.filter((x) => x != null); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; };
+const draft = (k, fallback = '') => S.drafts[k] ?? fallback;
+const nowIso = () => new Date().toISOString();
+const uid = () => Math.random().toString(36).slice(2, 10);
+const board = () => S.boards.find((b) => b.id === S.board) ?? null;
+const boardIdeas = () => S.ideas.filter((i) => i.boardId === S.board);
+const boardItems = (kind) => S.items.filter((i) => i.boardId === S.board && i.kind === kind).sort((a, b) => (a.createdAt ?? '').localeCompare(b.createdAt ?? ''));
+const roleOf = (id) => S.members[id]?.role ?? null;
+const myRole = () => roleOf(S.me);
+const memberForRole = (role) => Object.keys(S.members).find((id) => S.members[id].role === role) ?? null;
+const roster = () => ROLE_KEYS.map((role) => ({ role, id: memberForRole(role) }));
+
+function nameOf(id) {
+  if (!id) return 'Iemand';
+  return S.profiles[id]?.name || (roleOf(id) ? ROLES[roleOf(id)].label : 'Iemand');
+}
+const firstName = (id) => nameOf(id).split(' ')[0];
+
+function initials(name) {
+  const p = name.trim().split(/\s+/);
+  return ((p[0]?.[0] ?? '') + (p.length > 1 ? p.at(-1)[0] : p[0]?.[1] ?? '')).toUpperCase();
+}
+
+function avatar(id, { size = '', online = null, role = null } = {}) {
+  const r = ROLES[role ?? roleOf(id)];
+  const cls = ['avatar', size, online === true && 'online', online === false && 'offline'].filter(Boolean).join(' ');
+  const p = id && S.profiles[id];
+  const title = id ? `${nameOf(id)}${r ? ` — ${r.label}` : ''}` : r ? `${r.label} (nog vrij)` : '';
+  const inner = p?.avatarUrl ? `<img src="${attr(p.avatarUrl)}" alt="">` : esc(id ? initials(nameOf(id)) : r?.short ?? '?');
+  return `<span class="${cls}" style="--c:${r?.color ?? 'var(--muted)'}" title="${attr(title)}">${inner}</span>`;
+}
+function lensTag(key) {
+  const r = ROLES[key];
+  return r ? `<span class="tag" style="--c:${r.color}">${esc(r.short)} · ${esc(r.lens)}</span>` : '';
+}
+function relTime(iso) {
+  if (!iso) return '';
+  const s = (Date.now() - new Date(iso).getTime()) / 1000;
+  if (s < 60) return 'zojuist';
+  if (s < 3600) return `${Math.floor(s / 60)} min geleden`;
+  if (s < 86400) return `${Math.floor(s / 3600)} uur geleden`;
+  if (s < 86400 * 7) return `${Math.floor(s / 86400)} dagen geleden`;
+  return new Date(iso).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+const votesLabel = (n) => `${n} ${n === 1 ? 'stem' : 'stemmen'}`;
+
+function md(src) {
+  const inline = (t) => esc(t).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').replace(/(^|[^*])\*(?!\s)(.+?)\*/g, '$1<em>$2</em>').replace(/`([^`]+)`/g, '<code>$1</code>');
+  const out = []; let list = null;
+  const close = () => { if (list) out.push(`</${list}>`); list = null; };
+  for (const line of String(src ?? '').split('\n')) {
+    let m;
+    if ((m = line.match(/^#{1,6}\s+(.*)/))) { close(); out.push(`<h3>${inline(m[1])}</h3>`); }
+    else if ((m = line.match(/^\s*[-*]\s+(.*)/))) { if (list !== 'ul') { close(); out.push('<ul>'); list = 'ul'; } out.push(`<li>${inline(m[1])}</li>`); }
+    else if ((m = line.match(/^\s*\d+[.)]\s+(.*)/))) { if (list !== 'ol') { close(); out.push('<ol>'); list = 'ol'; } out.push(`<li>${inline(m[1])}</li>`); }
+    else if (!line.trim()) close();
+    else { close(); out.push(`<p>${inline(line)}</p>`); }
+  }
+  close();
+  return `<div class="md">${out.join('')}</div>`;
+}
+function toast(message, type = '') {
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.textContent = message;
+  document.getElementById('toasts').append(el);
+  setTimeout(() => el.remove(), 3800);
+}
+
+// ---------------------------------------------------------------------------
+// Opslag (db-capability)
+// ---------------------------------------------------------------------------
+const queues = new Map();
+// Eén schrijfactie tegelijk per document.
+function queue(path, fn) {
+  const prev = queues.get(path) ?? Promise.resolve();
+  const next = prev.catch(() => {}).then(fn);
+  queues.set(path, next);
+  return next.catch(handleWriteError);
+}
+function handleWriteError(e) {
+  if (e?.code === 'invalid_argument' && S.canWrite !== true) {
+    S.readOnly = true;
+    toast('Je kunt meekijken, maar niet bewerken. Vraag de eigenaar om je als Contributor toe te voegen.', 'error');
+    render();
+  } else if (e?.code === 'quota_exceeded') {
+    toast('De opslag van deze brainstorm is vol. Verwijder oude sessies om ruimte te maken.', 'error');
+  } else if (e?.code === 'resource_exhausted') {
+    toast('Even te veel wijzigingen tegelijk. Probeer het zo opnieuw.', 'error');
+  } else {
+    toast('Opslaan lukte niet. Probeer het opnieuw.', 'error');
+    console.error(e);
+  }
+}
+const ref = (path) => S.cap.db.doc(path);
+const setDoc = (path, data) => queue(path, () => ref(path).set(data));
+const updateDoc = (path, data) => queue(path, () => ref(path).update(data));
+const deleteDoc = (path) => queue(path, () => ref(path).delete());
+const newId = (coll) => S.cap.db.collection(coll).doc().id;
+const touchBoard = (fields = {}) => S.board && updateDoc(`boards/${S.board}`, { ...fields, updatedAt: nowIso() });
+
+function guardWrite() {
+  if (S.readOnly || S.canWrite === false) {
+    toast('Je kunt meekijken, maar niet bewerken. Vraag de eigenaar om je als Contributor toe te voegen.');
+    return false;
+  }
+  if (!myRole()) { S.ui.changeRole = true; render(); return false; }
+  return true;
+}
+
+function subscribe() {
+  const db = S.cap.db;
+  const timer = setTimeout(() => { if (S.loaded.size < COLLECTIONS.length) { S.slow = true; render(); } }, 10_000);
+  for (const coll of COLLECTIONS) {
+    db.collection(coll).onSnapshot((snap) => {
+      const rows = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      if (coll === 'members') S.members = Object.fromEntries(rows.map((r) => [r.id, r]));
+      else if (coll === 'opportunities') S.opps = rows;
+      else S[coll] = rows;
+      if (!snap.metadata.fromCache) S.loaded.add(coll);
+      if (S.loaded.size === COLLECTIONS.length) { clearTimeout(timer); S.slow = false; }
+      scheduleProfiles();
+      render();
+    }, (e) => {
+      clearTimeout(timer);
+      S.dbError = e.code;
+      render();
+    });
+  }
+}
+
+let profileTimer = null;
+function scheduleProfiles() {
+  clearTimeout(profileTimer);
+  profileTimer = setTimeout(async () => {
+    if (!S.cap.user) return;
+    const ids = new Set(Object.keys(S.members));
+    for (const i of S.ideas) { ids.add(i.authorId); for (const c of Object.values(i.comments ?? {})) ids.add(c?.authorId); }
+    for (const b of S.boards) ids.add(b.createdBy);
+    for (const it of S.items) { ids.add(it.by); ids.add(it.ownerId); }
+    for (const o of S.opps) ids.add(o.ownerId);
+    for (const p of S.peers) ids.add(p.by);
+    if (S.me) ids.add(S.me);
+    const list = [...ids].filter((x) => typeof x === 'string' && x);
+    if (!list.length) return;
+    const ps = await S.cap.user.profiles(list);
+    const changed = list.some((id) => S.profiles[id]?.name !== ps[id]?.name || S.profiles[id]?.avatarUrl !== ps[id]?.avatarUrl);
+    S.profiles = { ...S.profiles, ...ps };
+    if (changed) render();
+  }, 60);
+}
+
+// ---------------------------------------------------------------------------
+// Routing (alleen #naam werkt binnen een artifact)
+// ---------------------------------------------------------------------------
+function readHash() {
+  const h = location.hash.replace(/^#/, '');
+  S.board = h.startsWith('s-') ? h.slice(2) : null;
+}
+function go(boardId) {
+  location.hash = boardId ? `s-${boardId}` : '';
+  if (!boardId && location.hash) history.replaceState(null, '', location.pathname + location.search);
+  onRoute();
+}
+function onRoute() {
+  const prev = S.board;
+  readHash();
+  if (prev !== S.board) {
+    Object.assign(S.ui, { openIdea: null, editHeader: false, addCluster: false, renameCluster: null });
+    S.tab = 'ideeen';
+    S.aiStream = '';
+    window.scrollTo(0, 0);
+  }
+  S.cap.room?.presence({ board: S.board ?? null }).catch(() => {});
+  render();
+}
+window.addEventListener('hashchange', onRoute);
+
+// ---------------------------------------------------------------------------
+// Weergave
+// ---------------------------------------------------------------------------
+function onlineIds() { return new Set(S.peers.map((p) => p.by).filter(Boolean)); }
+
+function appbar() {
+  const online = onlineIds();
+  return `<header class="appbar">
+    <a class="brand" href="#" data-action="home"><span class="mark">B</span>Brainstorm</a>
+    <span class="spacer"></span>
+    <div class="avatars hide-sm" title="Wie is er nu online">
+      ${roster().map(({ role, id }) => avatar(id, { size: 'sm', role, online: id ? online.has(id) : false })).join('')}
+    </div>
+    ${S.me ? `<button class="ghost sm" data-action="change-role" title="Rol wijzigen">${myRole() ? esc(ROLES[myRole()].short) : 'Kies je rol'}</button>` : ''}
+  </header>`;
+}
+
+function render() {
+  let html;
+  if (!S.started) html = '<div class="loading">Brainstorm laden…</div>';
+  else if (!S.cap.db) html = renderNoRuntime();
+  else if (S.dbError) html = `<div class="center"><div class="panel"><h2>De gegevens zijn niet bereikbaar</h2><p class="muted">Herlaad de pagina. Lukt het dan nog niet, controleer of je nog toegang hebt tot deze brainstorm.</p></div></div>`;
+  else if (S.loaded.size < COLLECTIONS.length && !S.boards.length && !Object.keys(S.members).length) html = `<div class="loading">${S.slow ? 'De gegevens zijn nog niet bereikbaar. Controleer je verbinding.' : 'Brainstorm laden…'}</div>`;
+  else if (!S.me) html = renderNoIdentity();
+  else if (!myRole() || S.ui.changeRole) html = appbar() + renderRolePicker();
+  else if (S.board && board()) html = appbar() + renderBoard();
+  else html = appbar() + renderHome();
+  if (S.modal) html += renderModal();
+
+  const target = document.createElement('div');
+  target.id = 'app';
+  target.innerHTML = html;
+  if (window.morphdom) {
+    window.morphdom(root, target, {
+      onBeforeElUpdated(from, to) {
+        if (from === document.activeElement && /^(INPUT|TEXTAREA|SELECT)$/.test(from.tagName)) return false;
+        return !from.isEqualNode(to);
+      },
+    });
+  } else {
+    root.innerHTML = html;
+  }
+  tickTimer();
+}
+
+function renderNoRuntime() {
+  return `<div class="center"><div class="panel">
+    <h2>Open Brainstorm in claude.ai</h2>
+    <p class="muted">Deze pagina bewaart ideeën, stemmen en perspectieven in de gedeelde opslag van claude.ai. Die is alleen beschikbaar als je de brainstorm opent via de link in claude.ai, ingelogd met je eigen account.</p>
+  </div></div>`;
+}
+function renderNoIdentity() {
+  return `<div class="center"><div class="panel">
+    <h2>Log in om mee te doen</h2>
+    <p class="muted">Om ideeën toe te voegen en te stemmen moet je ingelogd zijn op claude.ai met het account waarmee deze brainstorm met je is gedeeld.</p>
+  </div></div>`;
+}
+
+function renderRolePicker() {
+  const mine = myRole();
+  return `<div class="center"><div class="panel">
+    <h1>${mine ? 'Rol wijzigen' : 'Welkom bij Brainstorm'}</h1>
+    <p class="muted">${mine ? 'Kies de rol waarmee je meedoet.' : 'Hier sparren we met z’n vieren over nieuwe kansen, elk vanuit onze eigen expertise. Kies eerst welke rol jij hebt; je naam en foto komen van je claude.ai-account.'}</p>
+    ${S.readOnly || S.canWrite === false ? '<div class="banner warn">Je hebt alleen leesrechten. Vraag de eigenaar om je als Contributor toe te voegen om mee te doen.</div>' : ''}
+    <div class="role-pick">
+      ${ROLE_KEYS.map((k) => {
+        const r = ROLES[k];
+        const holder = memberForRole(k);
+        const takenByOther = holder && holder !== S.me;
+        return `<button style="--c:${r.color}" data-action="pick-role" data-role="${k}" ${takenByOther ? 'disabled' : ''}>
+          ${avatar(holder, { size: 'lg', role: k })}
+          <span><strong>${esc(r.label)}</strong><span class="muted small">${esc(r.lens)}${takenByOther ? ` · gekozen door ${esc(nameOf(holder))}` : holder === S.me ? ' · jouw rol' : ''}</span></span>
+        </button>`;
+      }).join('')}
+    </div>
+    ${mine ? '<div class="row" style="margin-top:1rem"><button data-action="cancel-role">Annuleren</button></div>' : ''}
+  </div></div>`;
+}
+
+function readOnlyBanner() {
+  return S.readOnly || S.canWrite === false ? '<div class="banner warn">Je kijkt mee met alleen leesrechten. Vraag de eigenaar om je als Contributor toe te voegen.</div>' : '';
+}
+
+// ---------- Startpagina ----------
+function renderHome() {
+  const boards = S.boards.filter((b) => !!b.archived === S.ui.showArchived).sort((a, b) => (b.updatedAt ?? '').localeCompare(a.updatedAt ?? ''));
+  const phaseLabel = (k) => PHASES.find((p) => p.key === k)?.label ?? k;
+  return `<main class="page">
+    ${readOnlyBanner()}
+    ${S.slow ? '<div class="banner warn">Sommige gegevens zijn nog niet geladen; wat je ziet kan verouderd zijn.</div>' : ''}
+    <div class="hero">
+      <div><h1>Hoi ${esc(firstName(S.me))}</h1><p class="muted" style="margin:0">Waar gaan we vandaag over sparren?</p></div>
+      <span class="spacer"></span>
+      <button class="primary" data-action="toggle-new-board">${S.ui.newBoard ? 'Annuleren' : '+ Nieuwe sessie'}</button>
+    </div>
+    ${S.ui.newBoard ? renderNewBoard() : ''}
+    <section class="section">
+      <div class="section-head">
+        <h2>${S.ui.showArchived ? 'Gearchiveerde sessies' : 'Sessies'}</h2>
+        <button class="ghost sm" data-action="toggle-archived">${S.ui.showArchived ? '← Actieve sessies' : 'Toon archief'}</button>
+      </div>
+      ${boards.length ? `<div class="board-grid">${boards.map((b) => {
+        const n = S.ideas.filter((i) => i.boardId === b.id).length;
+        const open = S.items.filter((i) => i.boardId === b.id && i.kind === 'action' && !i.done).length;
+        return `<button class="panel board-card" data-action="open-board" data-id="${b.id}">
+          <div class="row"><span class="badge accent">${esc(phaseLabel(b.phase))}</span><span class="spacer"></span>${avatar(b.createdBy, { size: 'sm' })}</div>
+          <h3>${esc(b.title)}</h3>
+          <div class="q">${esc(b.question || 'Geen centrale vraag')}</div>
+          <div class="row muted small"><span>${n} ${n === 1 ? 'idee' : 'ideeën'}</span>${open ? `<span>· ${open} open ${open === 1 ? 'actie' : 'acties'}</span>` : ''}<span class="spacer"></span><span>${relTime(b.updatedAt)}</span></div>
+        </button>`;
+      }).join('')}</div>` : `<div class="panel empty-state">${S.ui.showArchived ? 'Geen gearchiveerde sessies.' : 'Nog geen sessies. Start er een met <strong>+ Nieuwe sessie</strong>, bijvoorbeeld “Horizon verbreden”.'}</div>`}
+    </section>
+    ${renderRadar()}
+    ${renderTeam()}
+  </main>`;
+}
+
+function renderNewBoard() {
+  const tpl = TEMPLATES.find((t) => t.key === S.ui.template);
+  return `<section class="panel section">
+    <h2>Nieuwe sessie</h2>
+    <p class="muted small">Kies een werkvorm. Titel, vraag en thema's kun je daarna altijd aanpassen.</p>
+    <div class="template-grid">
+      ${TEMPLATES.map((t) => `<button class="template ${t.key === S.ui.template ? 'selected' : ''}" data-action="pick-template" data-key="${t.key}"><strong>${esc(t.title)}</strong><span class="muted small">${esc(t.description || 'Leeg bord, eigen vraag.')}</span></button>`).join('')}
+    </div>
+    <div class="stack">
+      <div><label for="nb-title">Titel</label><input id="nb-title" data-draft="nb.title" value="${attr(draft('nb.title'))}" placeholder="${attr(tpl.title)}"></div>
+      <div><label for="nb-question">Centrale vraag</label><input id="nb-question" data-draft="nb.question" value="${attr(draft('nb.question'))}" placeholder="${attr(tpl.question || 'Bijv. Hoe kunnen wij …?')}"></div>
+      <div class="muted small">Thema's: ${tpl.clusters.map((c) => `<span class="badge">${esc(c)}</span>`).join(' ')}</div>
+      <div><button class="primary" data-action="create-board">Sessie starten</button></div>
+    </div>
+  </section>`;
+}
+
+function renderRadar() {
+  return `<section class="section">
+    <div class="section-head"><h2>Kansenradar</h2><span class="muted small">De beste ideeën uit alle sessies, van verkennen tot bouwen.</span></div>
+    <div class="row" style="margin-bottom:0.75rem; max-width:640px">
+      <input id="opp-title" data-draft="opp.title" data-enter="add-opportunity" value="${attr(draft('opp.title'))}" placeholder="Nieuwe kans toevoegen…" style="flex:1">
+      <button data-action="add-opportunity">Toevoegen</button>
+    </div>
+    <div class="kanban-wrap"><div class="kanban">
+      ${STAGES.map((stage) => {
+        const list = S.opps.filter((o) => o.stage === stage.key).sort((a, b) => (a.createdAt ?? '').localeCompare(b.createdAt ?? ''));
+        return `<div class="kanban-col"><h3><span>${esc(stage.label)}</span><span class="muted">${list.length}</span></h3>
+          ${list.map((o) => `<div class="opp">
+            <div class="opp-title">${esc(o.title)}</div>
+            ${o.description ? `<div class="muted small" style="margin-bottom:0.35rem">${esc(o.description.slice(0, 160))}${o.description.length > 160 ? '…' : ''}</div>` : ''}
+            ${o.source && S.boards.some((b) => b.id === o.source.boardId) ? `<div class="small" style="margin-bottom:0.35rem">uit <a href="#s-${attr(o.source.boardId)}">${esc(S.boards.find((b) => b.id === o.source.boardId).title)}</a></div>` : ''}
+            <div class="row">
+              <select data-change="opp-owner" data-id="${o.id}" title="Trekker" aria-label="Trekker">
+                ${roster().filter((x) => x.id).map(({ id }) => `<option value="${attr(id)}" ${id === o.ownerId ? 'selected' : ''}>${esc(firstName(id))}</option>`).join('')}
+              </select>
+              <select data-change="opp-stage" data-id="${o.id}" title="Fase" aria-label="Fase">
+                ${STAGES.map((s) => `<option value="${s.key}" ${s.key === o.stage ? 'selected' : ''}>${esc(s.label)}</option>`).join('')}
+              </select>
+              <span class="spacer"></span>
+              <button class="ghost icon danger" data-action="remove-opportunity" data-id="${o.id}" title="Verwijderen" aria-label="Verwijderen">✕</button>
+            </div>
+          </div>`).join('')}
+        </div>`;
+      }).join('')}
+    </div></div>
+  </section>`;
+}
+
+function renderTeam() {
+  const online = onlineIds();
+  return `<section class="section">
+    <div class="section-head"><h2>Het team</h2><span class="muted small">Vier perspectieven, één gesprek.</span></div>
+    <div class="team-grid">
+      ${roster().map(({ role, id }) => {
+        const r = ROLES[role];
+        return `<div class="panel team-card" style="--c:${r.color}">
+          <div class="row" style="flex-wrap:nowrap">${avatar(id, { role, online: id ? online.has(id) : false })}
+            <div style="min-width:0"><strong>${id ? esc(nameOf(id)) : 'Nog vrij'}</strong><div class="muted small">${esc(r.label)}</div></div>
+          </div>
+          <div class="small" style="margin-top:0.5rem"><strong>Bril:</strong> ${esc(r.lens)}</div>
+          <ul>${r.questions.map((q) => `<li>${esc(q)}</li>`).join('')}</ul>
+          ${id ? '' : '<p class="muted small" style="margin:0.6rem 0 0">Deel deze brainstorm via de knop Delen in claude.ai. Wie hem opent, kiest daarna deze rol.</p>'}
+        </div>`;
+      }).join('')}
+    </div>
+  </section>`;
+}
+
+// ---------- Sessiebord ----------
+const TABS = [['ideeen', 'Ideeën'], ['perspectieven', 'Perspectieven'], ['matrix', 'Prioriteren'], ['acties', 'Besluiten & acties'], ['ai', 'AI-sparringpartner']];
+
+function renderBoard() {
+  const b = board();
+  const phaseIdx = Math.max(0, PHASES.findIndex((p) => p.key === b.phase));
+  const here = [...new Set(S.peers.filter((p) => p.presence?.board === b.id).map((p) => p.by).filter(Boolean))];
+  return `<main class="page">
+    ${readOnlyBanner()}
+    <div class="board-head">
+      <div style="flex:1; min-width:min(280px, 100%)">
+        <div class="small"><a href="#" data-action="home">← Alle sessies</a></div>
+        ${S.ui.editHeader ? `<div class="stack panel" style="margin-top:0.5rem">
+            <div><label for="bh-title">Titel</label><input id="bh-title" data-change="board-field" data-field="title" value="${attr(b.title)}"></div>
+            <div><label for="bh-q">Centrale vraag</label><input id="bh-q" data-change="board-field" data-field="question" value="${attr(b.question)}"></div>
+            <div><label for="bh-d">Context</label><textarea id="bh-d" data-change="board-field" data-field="description" rows="3">${esc(b.description)}</textarea></div>
+            <div class="row">
+              <button class="primary sm" data-action="toggle-edit-header">Klaar</button><span class="spacer"></span>
+              <button class="sm" data-action="archive-board">${b.archived ? 'Uit archief halen' : 'Archiveren'}</button>
+              <button class="sm danger" data-action="delete-board">Verwijderen</button>
+            </div>
+          </div>` : `<h1>${esc(b.title)} <button class="ghost icon sm" data-action="toggle-edit-header" title="Bewerken" aria-label="Sessie bewerken">✎</button></h1>
+          ${b.question ? `<div class="question">${esc(b.question)}</div>` : ''}
+          ${b.description ? `<p class="muted small" style="margin-top:0.3rem; max-width:80ch">${esc(b.description)}</p>` : ''}`}
+      </div>
+      <div class="head-side">
+        <div class="row"><span class="muted small">Hier nu:</span><div class="avatars">${here.map((id) => avatar(id, { size: 'sm', online: true })).join('') || '<span class="muted small">alleen jij</span>'}</div></div>
+        <div class="row">
+          ${b.timer ? `<span class="timer" id="timer" data-ends="${attr(b.timer.endsAt)}">--:--</span><button class="sm ghost" data-action="timer" data-min="0">Stop</button>`
+            : `<span class="muted small">Timebox:</span>${[5, 10, 15, 25].map((m) => `<button class="sm" data-action="timer" data-min="${m}">${m}m</button>`).join('')}`}
+        </div>
+        <div class="row">
+          ${S.cap.downloads ? '<button class="sm" data-action="download-md">Download (.md)</button>' : ''}
+          <button class="sm" data-action="copy-md">Kopieer als Markdown</button>
+        </div>
+      </div>
+    </div>
+    <div class="phases">${PHASES.map((p, i) => `<button class="phase ${i === phaseIdx ? 'current' : i < phaseIdx ? 'done' : ''}" data-action="phase" data-key="${p.key}"><span class="n">${i + 1}</span> ${esc(p.label)}</button>`).join('')}</div>
+    <div class="muted small">${esc(PHASES[phaseIdx].hint)}</div>
+    <nav class="tabs">${TABS.map(([k, l]) => `<button class="tab ${S.tab === k ? 'active' : ''}" data-action="tab" data-key="${k}">${l}</button>`).join('')}</nav>
+    ${S.aiBusy ? `<div class="ai-busy"><span class="spinner"></span> Claude denkt na…<span class="spacer"></span><button class="sm" data-action="ai-stop">Stoppen</button></div>` : ''}
+    ${({ ideeen: renderIdeas, perspectieven: renderPerspectives, matrix: renderMatrix, acties: renderActions, ai: renderAi }[S.tab] ?? renderIdeas)(b)}
+  </main>
+  ${S.ui.openIdea ? renderDrawer(b) : ''}`;
+}
+
+const sortedIdeas = (list) => [...list].sort((a, b) => sum(b.votes) - sum(a.votes) || (a.createdAt ?? '').localeCompare(b.createdAt ?? ''));
+
+function ideaCard(idea) {
+  const myVotes = Number(idea.votes?.[S.me]) || 0;
+  const color = idea.lens ? ROLES[idea.lens].color : 'var(--border)';
+  const comments = Object.values(idea.comments ?? {}).filter(Boolean).length;
+  return `<article class="card ${esc(idea.status)}" style="--c:${color}" data-action="open-idea" data-id="${idea.id}">
+    <div class="row" style="gap:0.35rem">${lensTag(idea.lens)}${idea.status === 'shortlist' ? '<span class="tag" style="--c:var(--warn)">★ shortlist</span>' : ''}${idea.status === 'geparkeerd' ? '<span class="tag">geparkeerd</span>' : ''}</div>
+    <p class="card-text">${esc(idea.text)}</p>
+    <div class="card-foot">
+      ${idea.fromAi ? '<span class="tag" style="--c:var(--accent)" title="Voorgesteld door Claude">AI</span>' : avatar(idea.authorId, { size: 'sm' })}
+      <span class="pdots" title="Perspectieven gegeven">${ROLE_KEYS.map((k) => `<span class="pdot ${idea.perspectives?.[k] ? 'on' : ''}" style="--c:${ROLES[k].color}"></span>`).join('')}</span>
+      ${comments ? `<span>${comments} ${comments === 1 ? 'reactie' : 'reacties'}</span>` : ''}
+      <span class="votes">
+        ${myVotes ? `<button class="ghost" data-action="vote" data-id="${idea.id}" data-delta="-1" title="Stem terugnemen" aria-label="Stem terugnemen">−</button>` : ''}
+        <span class="count ${myVotes ? 'mine' : ''}" title="${myVotes ? `waarvan ${myVotes} van jou` : ''}">${sum(idea.votes)}</span>
+        <button class="ghost" data-action="vote" data-id="${idea.id}" data-delta="1" title="Stem" aria-label="Stem">▲</button>
+      </span>
+    </div>
+  </article>`;
+}
+
+function renderIdeas(b) {
+  const ideas = boardIdeas();
+  const votesUsed = ideas.reduce((s, i) => s + (Number(i.votes?.[S.me]) || 0), 0);
+  const visible = ideas.filter((i) => (S.ui.showParked || i.status !== 'geparkeerd') && (!S.ui.lensFilter || i.lens === S.ui.lensFilter));
+  const clusters = b.clusters ?? [];
+  return `<div class="panel">
+    <div class="composer">
+      <textarea id="idea-text" data-draft="idea.text" data-enter="add-idea" rows="2" placeholder="Nieuw idee… (Enter = toevoegen, Shift+Enter = nieuwe regel)">${esc(draft('idea.text'))}</textarea>
+      <select id="idea-cluster" data-draft="idea.cluster" aria-label="Thema">${clusters.map((c) => `<option value="${c.id}" ${draft('idea.cluster') === c.id ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select>
+      <select id="idea-lens" data-draft="idea.lens" aria-label="Perspectief">
+        <option value="">Geen specifiek perspectief</option>
+        ${ROLE_KEYS.map((k) => `<option value="${k}" ${draft('idea.lens', myRole()) === k ? 'selected' : ''}>${esc(ROLES[k].lens)}</option>`).join('')}
+      </select>
+      <button class="primary" data-action="add-idea">Toevoegen</button>
+    </div>
+  </div>
+  <div class="row" style="margin:0.9rem 0">
+    <button class="chip ${!S.ui.lensFilter ? 'active' : ''}" data-action="lens-filter" data-key="">Alle</button>
+    ${ROLE_KEYS.map((k) => `<button class="chip ${S.ui.lensFilter === k ? 'active' : ''}" data-action="lens-filter" data-key="${k}">${esc(ROLES[k].short)} · ${esc(ROLES[k].lens)}</button>`).join('')}
+    <label class="row small" style="margin:0 0 0 0.5rem; gap:0.3rem" for="show-parked"><input id="show-parked" type="checkbox" style="width:auto" data-change="toggle-parked" ${S.ui.showParked ? 'checked' : ''}> geparkeerd tonen</label>
+    <span class="spacer"></span>
+    <span class="muted small">Jouw stemmen: <strong>${votesUsed}/${MAX_VOTES}</strong></span>
+    ${S.ui.addCluster ? `<input id="new-cluster" data-draft="cluster.name" data-enter="add-cluster" value="${attr(draft('cluster.name'))}" placeholder="Naam van het thema" style="width:200px"><button class="sm primary" data-action="add-cluster">Toevoegen</button><button class="sm ghost" data-action="toggle-add-cluster">Annuleren</button>`
+      : '<button class="sm" data-action="toggle-add-cluster">+ Thema</button>'}
+  </div>
+  ${renderAiStrip(b)}
+  ${ideas.length ? `<div class="columns">${clusters.map((c) => {
+      const list = sortedIdeas(visible.filter((i) => i.clusterId === c.id || (!clusters.some((x) => x.id === i.clusterId) && c === clusters[0])));
+      return `<section class="column">
+        <div class="column-head">
+          ${S.ui.renameCluster === c.id ? `<input id="rename-${c.id}" data-draft="rename.${c.id}" data-enter="save-cluster" data-id="${c.id}" value="${attr(draft(`rename.${c.id}`, c.name))}"><button class="sm primary" data-action="save-cluster" data-id="${c.id}">Opslaan</button>`
+            : `<h3>${esc(c.name)} <span class="muted">${list.length}</span></h3>
+              <button class="ghost icon sm" data-action="rename-cluster" data-id="${c.id}" title="Hernoemen" aria-label="Thema hernoemen">✎</button>
+              <button class="ghost icon sm" data-action="remove-cluster" data-id="${c.id}" title="Verwijderen" aria-label="Thema verwijderen">✕</button>`}
+        </div>
+        ${list.map(ideaCard).join('') || '<div class="muted small" style="padding:0.4rem">Nog leeg</div>'}
+      </section>`;
+    }).join('')}</div>`
+    : `<div class="panel empty-state"><p><strong>Nog geen ideeën.</strong></p><p>Tip: zet een timebox van 10 minuten en schrijf ieder zoveel mogelijk ideeën op, nog zonder te oordelen.</p></div>`}`;
+}
+
+function renderAiStrip(b) {
+  if (!S.cap.sample) return '';
+  const suggestions = boardItems('suggestion');
+  return `<div class="ai-strip">
+    <div class="row">
+      <strong>Laat Claude meedenken</strong>
+      <span class="muted small">Ideeën vanuit alle vier de perspectieven, ook buiten de ServiceNow-wereld.</span>
+      <span class="spacer"></span>
+      <input id="ai-focus" data-draft="ai.focus" value="${attr(draft('ai.focus'))}" placeholder="Optioneel: focus (bijv. zorgsector, Microsoft, AI-agents)" style="max-width:360px">
+      <button class="primary sm" data-action="ai-ideas" ${S.aiBusy ? 'disabled' : ''}>Genereer ideeën</button>
+    </div>
+    ${suggestions.length ? `<div class="suggestions">${suggestions.map((s) => `<div class="suggestion">
+        <div class="row">${lensTag(s.lens)}<span class="spacer"></span><span class="badge">${esc((b.clusters ?? []).find((c) => c.id === s.clusterId)?.name ?? '')}</span></div>
+        <p><strong>${esc(s.text)}</strong></p>
+        <p class="muted small">${esc(s.details)}</p>
+        <div class="row"><button class="sm primary" data-action="accept-suggestion" data-id="${s.id}">Op het bord</button><button class="sm ghost" data-action="dismiss-suggestion" data-id="${s.id}">Negeren</button></div>
+      </div>`).join('')}</div>` : ''}
+  </div>`;
+}
+
+function renderPerspectives() {
+  let ideas = boardIdeas().filter((i) => i.status === 'shortlist');
+  const usingShortlist = ideas.length > 0;
+  if (!usingShortlist) ideas = sortedIdeas(boardIdeas().filter((i) => i.status !== 'geparkeerd')).slice(0, 8);
+  const mine = myRole();
+  return `<div class="lens-grid">${ROLE_KEYS.map((k) => {
+      const r = ROLES[k];
+      return `<div class="panel lens-card" style="--c:${r.color}"><div class="row">${avatar(memberForRole(k), { size: 'sm', role: k })}<strong>${esc(r.lens)}</strong></div><ul>${r.questions.map((q) => `<li>${esc(q)}</li>`).join('')}</ul></div>`;
+    }).join('')}</div>
+  <p class="muted small">${usingShortlist ? `De ${ideas.length} ${ideas.length === 1 ? 'idee' : 'ideeën'} op de shortlist. Klik op een vakje om je perspectief te geven of te lezen.` : 'Nog geen shortlist. Hieronder de ideeën met de meeste stemmen. Zet ideeën op de ★ shortlist om gericht te bespreken.'}</p>
+  ${ideas.length ? `<div class="panel table-scroll"><table class="ptable">
+    <thead><tr><th class="idea-col">Idee</th>${ROLE_KEYS.map((k) => `<th style="color:${ROLES[k].color}">${esc(ROLES[k].label)}</th>`).join('')}</tr></thead>
+    <tbody>${ideas.map((idea) => {
+      const counts = { kans: 0, zorg: 0 };
+      for (const p of Object.values(idea.perspectives ?? {})) if (p) counts[p.sentiment] = (counts[p.sentiment] ?? 0) + 1;
+      return `<tr>
+        <td><div class="pcell idea" data-action="open-idea" data-id="${idea.id}"><strong>${esc(idea.text)}</strong><br><span class="muted small">▲ ${sum(idea.votes)} · <span class="sentiment-kans">${counts.kans} kans</span> · <span class="sentiment-zorg">${counts.zorg} zorg</span></span></div></td>
+        ${ROLE_KEYS.map((k) => {
+          const p = idea.perspectives?.[k];
+          const isMine = k === mine;
+          return `<td><div class="pcell ${p ? esc(p.sentiment) : 'empty'} ${isMine ? 'mine' : ''}" data-action="open-idea" data-id="${idea.id}">${p ? esc(p.text) : isMine ? '+ Jouw perspectief' : 'Nog niet ingevuld'}</div></td>`;
+        }).join('')}
+      </tr>`;
+    }).join('')}</tbody></table></div>` : '<div class="panel empty-state">Voeg eerst ideeën toe op het tabblad Ideeën.</div>'}`;
+}
+
+function ratingStats(idea) {
+  const r = Object.values(idea.ratings ?? {}).filter((x) => x && (x.impact != null || x.effort != null));
+  return { impact: avg(r.map((x) => x.impact)), effort: avg(r.map((x) => x.effort)), n: r.length };
+}
+function scale(ideaId, field, value) {
+  return `<span class="scale">${[1, 2, 3, 4, 5].map((n) => `<button class="${value === n ? 'on' : ''}" data-action="rate" data-id="${ideaId}" data-field="${field}" data-value="${value === n ? '' : n}" aria-label="${field === 'impact' ? 'Impact' : 'Inspanning'} ${n}" title="${value === n ? 'Klik om te wissen' : ''}">${n}</button>`).join('')}</span>`;
+}
+
+function renderMatrix() {
+  const ideas = sortedIdeas(boardIdeas().filter((i) => i.status !== 'geparkeerd'));
+  const numbered = ideas.map((idea, i) => ({ idea, num: i + 1, ...ratingStats(idea) }));
+  const rated = numbered.filter((x) => x.impact != null && x.effort != null);
+  const mineCount = ideas.filter((i) => i.ratings?.[S.me]).length;
+  const score = (x) => x.impact - x.effort * 0.5;
+  const ranking = [...rated].sort((a, b) => score(b) - score(a));
+  return `<div class="matrix-wrap">
+    <div class="stack" style="gap:1rem">
+      <div class="panel">
+        <h3>Impact × inspanning</h3>
+        <p class="muted small">Gemiddelde van alle scores. Linksboven zitten de quick wins.</p>
+        <div class="matrix">
+          <div class="quad">Quick wins</div><div class="quad">Grote projecten</div><div class="quad">Opvullers</div><div class="quad">Tijdvreters</div>
+          ${rated.map((x) => {
+            const left = ((x.effort - 1) / 4) * 92 + 4;
+            const bottom = ((x.impact - 1) / 4) * 92 + 4;
+            const color = x.idea.lens ? ROLES[x.idea.lens].color : 'var(--accent)';
+            return `<span class="dot" style="left:${left}%; bottom:${bottom}%; --c:${color}" data-action="open-idea" data-id="${x.idea.id}" title="${attr(`${x.idea.text}\nimpact ${x.impact.toFixed(1)} · inspanning ${x.effort.toFixed(1)} · ${x.n} van 4`)}">${x.num}</span>`;
+          }).join('')}
+        </div>
+        <div class="axis"><span>← weinig inspanning</span><span>veel inspanning →</span></div>
+      </div>
+      ${ranking.length ? `<div class="panel table-scroll">
+        <h3>Ranglijst</h3>
+        <p class="muted small">Gesorteerd op impact min de helft van de inspanning.</p>
+        <table class="list"><thead><tr><th>#</th><th>Idee</th><th>▲</th><th>Impact</th><th>Inspanning</th><th>Partners</th></tr></thead>
+        <tbody>${ranking.map((x) => `<tr><td><span class="num">${x.num}</span></td><td><a href="#" data-action="open-idea" data-id="${x.idea.id}">${esc(x.idea.text)}</a></td><td class="n">${sum(x.idea.votes)}</td><td class="n">${x.impact.toFixed(1)}</td><td class="n">${x.effort.toFixed(1)}</td><td class="n">${x.n}/4</td></tr>`).join('')}</tbody></table>
+      </div>` : ''}
+    </div>
+    <div class="panel">
+      <h3>Jouw scores</h3>
+      <p class="muted small">Je hebt ${mineCount} van de ${ideas.length} ideeën gescoord. Impact: hoeveel waarde levert het op? Inspanning: hoeveel tijd, geld en mensen kost het?</p>
+      ${numbered.map(({ idea, num }) => {
+        const r = idea.ratings?.[S.me] ?? {};
+        return `<div class="rate-row"><span class="num">${num}</span><span class="small">${esc(idea.text)}</span>
+          <span class="scales"><span>impact ${scale(idea.id, 'impact', r.impact)}</span><span>inspanning ${scale(idea.id, 'effort', r.effort)}</span></span></div>`;
+      }).join('') || '<div class="empty-state">Nog geen ideeën om te scoren.</div>'}
+    </div>
+  </div>`;
+}
+
+function renderActions(b) {
+  const decisions = boardItems('decision');
+  const actions = boardItems('action');
+  const people = roster().filter((x) => x.id);
+  return `<div class="grid-2">
+    <div class="stack" style="gap:1.25rem">
+      <div class="panel">
+        <h3>Besluiten</h3>
+        ${decisions.length ? '' : '<p class="muted small">Wat hebben we samen besloten?</p>'}
+        <ul style="padding-left:1.1rem">${decisions.map((d) => `<li style="margin-bottom:0.3rem">${esc(d.text)} <span class="muted small">— ${esc(firstName(d.by))}</span> <button class="ghost icon sm" data-action="remove-item" data-id="${d.id}" aria-label="Besluit verwijderen">✕</button></li>`).join('')}</ul>
+        <div class="row"><input id="decision-text" data-draft="decision.text" data-enter="add-decision" value="${attr(draft('decision.text'))}" placeholder="Nieuw besluit…" style="flex:1"><button data-action="add-decision">Toevoegen</button></div>
+      </div>
+      <div class="panel">
+        <h3>Acties</h3>
+        <div class="table-scroll"><table class="list"><tbody>
+          ${actions.map((a) => `<tr class="${a.done ? 'done' : ''}">
+            <td style="width:1.5rem"><input type="checkbox" style="width:auto" aria-label="Afgerond" data-change="toggle-action" data-id="${a.id}" ${a.done ? 'checked' : ''}></td>
+            <td class="text">${esc(a.text)}</td>
+            <td>${avatar(a.ownerId, { size: 'sm' })}</td>
+            <td class="muted small">${a.due ? new Date(a.due).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' }) : ''}</td>
+            <td><button class="ghost icon sm" data-action="remove-item" data-id="${a.id}" aria-label="Actie verwijderen">✕</button></td>
+          </tr>`).join('')}
+        </tbody></table></div>
+        <div class="row" style="margin-top:0.6rem">
+          <input id="action-text" data-draft="action.text" data-enter="add-action" value="${attr(draft('action.text'))}" placeholder="Wat moet er gebeuren?" style="flex:2; min-width:180px">
+          <select id="action-owner" data-draft="action.owner" style="flex:1; min-width:110px" aria-label="Eigenaar">
+            ${people.map(({ id }) => `<option value="${attr(id)}" ${draft('action.owner', S.me) === id ? 'selected' : ''}>${esc(firstName(id))}</option>`).join('')}
+          </select>
+          <input id="action-due" type="date" data-draft="action.due" value="${attr(draft('action.due'))}" style="flex:1; min-width:140px" aria-label="Deadline">
+          <button data-action="add-action">Toevoegen</button>
+        </div>
+      </div>
+    </div>
+    <div class="panel">
+      <h3>Sessienotities</h3>
+      <p class="muted small">Gedeeld kladblok. Wordt opgeslagen zodra je buiten het veld klikt.</p>
+      <textarea id="board-notes" data-change="board-notes" rows="18" placeholder="Aantekeningen, links, inzichten…">${esc(b.notes)}</textarea>
+    </div>
+  </div>`;
+}
+
+const ASK_PROMPTS = [
+  'Welke markten liggen dicht bij onze ServiceNow-ervaring maar zijn nog onontgonnen?',
+  'Welk perspectief ontbreekt nog in deze discussie?',
+  'Wat is het meest onderschatte idee op het bord, en waarom?',
+  'Maak een 90-dagenplan voor het sterkste idee.',
+];
+
+function renderAi(b) {
+  if (!S.cap.sample) return `<div class="panel empty-state"><p><strong>Claude is hier niet beschikbaar.</strong></p><p>Open de brainstorm in claude.ai, ingelogd met je eigen account, om ideeën te laten genereren, ideeën kritisch te laten bevragen en sessies samen te vatten.</p></div>`;
+  const thread = boardItems('qa');
+  return `<div class="grid-2">
+    <div class="panel">
+      <h3>Vraag de sparringpartner</h3>
+      <p class="muted small">Claude kent de vraag, alle ideeën, perspectieven en notities van deze sessie. Het gesprek is zichtbaar voor het hele team; Claude draait op het account van wie de vraag stelt.</p>
+      <div class="thread">
+        ${thread.map((t) => `<div class="q-bubble"><div class="small" style="opacity:0.8">${esc(firstName(t.by))}</div>${esc(t.question)}</div><div class="a-bubble">${md(t.answer)}</div>`).join('')}
+        ${S.aiBusy === 'ask' ? `<div class="q-bubble"><div class="small" style="opacity:0.8">${esc(firstName(S.me))}</div>${esc(S.pendingQuestion ?? '')}</div><div class="a-bubble">${S.aiStream ? md(S.aiStream) : '<span class="muted">Claude denkt na…</span>'}</div>` : ''}
+      </div>
+      <div class="row" style="margin-bottom:0.5rem">${ASK_PROMPTS.map((p) => `<button class="chip" data-action="ask-preset" data-q="${attr(p)}" ${S.aiBusy ? 'disabled' : ''}>${esc(p)}</button>`).join('')}</div>
+      <div class="row">
+        <textarea id="ai-question" data-draft="ai.question" data-enter="ai-ask" rows="2" placeholder="Stel een vraag…" style="flex:1">${esc(draft('ai.question'))}</textarea>
+        <button class="primary" data-action="ai-ask" ${S.aiBusy ? 'disabled' : ''}>Vraag</button>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="row"><h3 style="margin:0">Samenvatting</h3><span class="spacer"></span>
+        <button class="sm primary" data-action="ai-summary" ${S.aiBusy ? 'disabled' : ''}>${b.aiSummary ? 'Opnieuw samenvatten' : 'Vat de sessie samen'}</button>
+      </div>
+      ${S.aiBusy === 'summary' ? (S.aiStream ? md(S.aiStream) : '<p class="muted small" style="margin-top:0.6rem">Claude leest de sessie…</p>')
+        : b.aiSummary ? `<p class="muted small">Gemaakt ${relTime(b.aiSummary.createdAt)} op verzoek van ${esc(firstName(b.aiSummary.by))}.</p>${md(b.aiSummary.text)}`
+        : '<p class="muted small" style="margin-top:0.6rem">Kern, sterkste ideeën, botsende perspectieven, open vragen en voorgestelde volgende stappen.</p>'}
+    </div>
+  </div>`;
+}
+
+function renderDrawer(b) {
+  const idea = boardIdeas().find((i) => i.id === S.ui.openIdea);
+  if (!idea) return '';
+  const mine = myRole();
+  const stats = ratingStats(idea);
+  const mineR = idea.ratings?.[S.me] ?? {};
+  const ch = idea.aiChallenge;
+  const comments = Object.entries(idea.comments ?? {}).filter(([, c]) => c).sort(([, a], [, b2]) => (a.createdAt ?? '').localeCompare(b2.createdAt ?? ''));
+  return `<div class="drawer-backdrop" data-action="close-idea"></div>
+  <aside class="drawer" role="dialog" aria-label="Idee">
+    <div class="row">
+      <div class="segmented">${[['open', 'Open'], ['shortlist', '★ Shortlist'], ['geparkeerd', 'Geparkeerd']].map(([k, l]) => `<button class="${idea.status === k ? 'on' : ''}" data-action="idea-status" data-id="${idea.id}" data-status="${k}">${l}</button>`).join('')}</div>
+      <span class="spacer"></span>
+      <button class="ghost" data-action="close-idea" title="Sluiten (Esc)" aria-label="Sluiten">✕</button>
+    </div>
+    <div class="stack">
+      <textarea id="d-text" class="title" rows="2" data-change="idea-field" data-id="${idea.id}" data-field="text" aria-label="Idee">${esc(idea.text)}</textarea>
+      <textarea id="d-details" rows="3" data-change="idea-field" data-id="${idea.id}" data-field="details" placeholder="Toelichting: wat houdt het in, voor wie, waarom nu?" aria-label="Toelichting">${esc(idea.details)}</textarea>
+      <div class="row">
+        <select id="d-cluster" data-change="idea-field" data-id="${idea.id}" data-field="clusterId" style="flex:1" aria-label="Thema">${(b.clusters ?? []).map((c) => `<option value="${c.id}" ${c.id === idea.clusterId ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select>
+        <select id="d-lens" data-change="idea-field" data-id="${idea.id}" data-field="lens" style="flex:1" aria-label="Perspectief">
+          <option value="">Geen specifiek perspectief</option>
+          ${ROLE_KEYS.map((k) => `<option value="${k}" ${idea.lens === k ? 'selected' : ''}>${esc(ROLES[k].lens)}</option>`).join('')}
+        </select>
+      </div>
+      <div class="muted small">${idea.fromAi ? `Voorgesteld door Claude, op het bord gezet door ${esc(firstName(idea.authorId))}` : `Door ${esc(nameOf(idea.authorId))}`} · ${relTime(idea.createdAt)} · ▲ ${votesLabel(sum(idea.votes))}</div>
+    </div>
+    <section>
+      <h4>Perspectieven</h4>
+      <div class="stack">${ROLE_KEYS.map((k) => {
+        const r = ROLES[k];
+        const p = idea.perspectives?.[k];
+        const holder = memberForRole(k);
+        if (k === mine) {
+          const sentiment = p?.sentiment ?? 'neutraal';
+          return `<div class="persp ${sentiment}" style="--c:${r.color}">
+            <div class="persp-head">${avatar(S.me, { size: 'sm' })} Jouw blik als ${esc(r.label)}</div>
+            <textarea rows="3" id="my-perspective" data-change="perspective" data-id="${idea.id}" placeholder="${attr(r.questions.join(' '))}" aria-label="Jouw perspectief">${esc(p?.text ?? '')}</textarea>
+            <div class="row" style="margin-top:0.4rem"><span class="muted small">Mijn oordeel:</span>
+              <div class="segmented">${['kans', 'neutraal', 'zorg'].map((s) => `<button class="${sentiment === s ? 'on' : ''}" data-action="sentiment" data-id="${idea.id}" data-sentiment="${s}">${{ kans: 'Kans', neutraal: 'Neutraal', zorg: 'Zorg' }[s]}</button>`).join('')}</div>
+            </div>
+          </div>`;
+        }
+        return `<div class="persp ${p ? esc(p.sentiment) : ''}" style="--c:${r.color}">
+          <div class="persp-head">${avatar(holder, { size: 'sm', role: k })} ${holder ? esc(nameOf(holder)) : esc(r.label)} <span class="muted small">· ${esc(r.lens)}</span>
+            ${p ? `<span class="spacer"></span><span class="small sentiment-${esc(p.sentiment)}">${{ kans: 'kans', neutraal: 'neutraal', zorg: 'zorg' }[p.sentiment] ?? ''}</span>` : ''}</div>
+          ${p ? `<div style="white-space:pre-wrap">${esc(p.text)}</div>` : '<div class="muted small">Nog geen perspectief gegeven.</div>'}
+        </div>`;
+      }).join('')}</div>
+    </section>
+    <section>
+      <h4>Scoren</h4>
+      <div class="stack">
+        <div class="row">Impact ${scale(idea.id, 'impact', mineR.impact)}</div>
+        <div class="row">Inspanning ${scale(idea.id, 'effort', mineR.effort)}</div>
+        <div class="muted small">${stats.n ? `Gemiddeld (${stats.n} van 4 partners): impact ${stats.impact?.toFixed(1) ?? '–'} · inspanning ${stats.effort?.toFixed(1) ?? '–'}` : 'Nog niemand heeft gescoord.'}</div>
+      </div>
+    </section>
+    ${S.cap.sample ? `<section>
+      <h4>Advocaat van de duivel</h4>
+      ${S.aiBusy === 'challenge' && S.aiTarget === idea.id ? '<p class="muted small">Claude bevraagt dit idee…</p>' : ch ? `<div class="challenge">
+          ${ROLE_KEYS.map((k) => `<p><strong style="color:${ROLES[k].color}">${esc(ROLES[k].label)}:</strong> ${esc(ch.perspectives?.[k])}</p>`).join('')}
+          <strong>Risico's</strong><ul>${(ch.risks ?? []).map((x) => `<li>${esc(x)}</li>`).join('')}</ul>
+          <strong>Aannames om te toetsen</strong><ul>${(ch.assumptions ?? []).map((x) => `<li>${esc(x)}</li>`).join('')}</ul>
+          <strong>Kleinste experiment</strong><p>${esc(ch.experiment)}</p>
+          <span class="muted small">${relTime(ch.createdAt)} · op verzoek van ${esc(firstName(ch.by))}</span>
+        </div>` : "<p class=\"muted small\">Laat Claude dit idee kritisch bevragen vanuit alle vier de rollen, met risico's, aannames en een klein experiment.</p>"}
+      <button class="sm" data-action="ai-challenge" data-id="${idea.id}" ${S.aiBusy ? 'disabled' : ''} style="margin-top:0.5rem">${ch ? 'Opnieuw bevragen' : 'Bevraag dit idee'}</button>
+    </section>` : ''}
+    <section>
+      <h4>Reacties</h4>
+      ${comments.map(([, c]) => `<div class="comment">${avatar(c.authorId, { size: 'sm' })}<div class="body"><div class="small"><strong>${esc(firstName(c.authorId))}</strong> <span class="muted">${relTime(c.createdAt)}</span></div>${esc(c.text)}</div></div>`).join('')}
+      <div class="row">
+        <input id="comment-${idea.id}" data-draft="comment.${idea.id}" data-enter="add-comment" data-id="${idea.id}" value="${attr(draft(`comment.${idea.id}`))}" placeholder="Reageer…" style="flex:1">
+        <button data-action="add-comment" data-id="${idea.id}">Plaats</button>
+      </div>
+    </section>
+    <div class="row">
+      <button data-action="to-radar" data-id="${idea.id}">Naar kansenradar</button>
+      <span class="spacer"></span>
+      <button class="danger" data-action="remove-idea" data-id="${idea.id}">Verwijderen</button>
+    </div>
+  </aside>`;
+}
+
+function renderModal() {
+  const m = S.modal;
+  return `<div class="modal-backdrop" data-action="modal-cancel"><div class="modal" role="dialog" aria-label="${attr(m.title)}" data-stop="1">
+    <h3 style="margin:0">${esc(m.title)}</h3>
+    ${m.text ? `<p class="muted" style="margin:0">${esc(m.text)}</p>` : ''}
+    <div class="row" style="justify-content:flex-end"><button data-action="modal-cancel">Annuleren</button><button class="${m.danger ? 'primary' : 'primary'}" data-action="modal-confirm">${esc(m.confirm ?? 'OK')}</button></div>
+  </div></div>`;
+}
+function confirmModal(title, text, confirm, onConfirm) {
+  S.modal = { title, text, confirm, onConfirm, danger: true };
+  render();
+}
+
+// ---------------------------------------------------------------------------
+// Timer
+// ---------------------------------------------------------------------------
+let timerInterval = null;
+let lastTimerEnd = null;
+function tickTimer() {
+  if (!document.getElementById('timer')) { clearInterval(timerInterval); timerInterval = null; return; }
+  const update = () => {
+    const t = document.getElementById('timer');
+    if (!t) return;
+    const left = Math.max(0, new Date(t.dataset.ends).getTime() - Date.now());
+    const m = Math.floor(left / 60000);
+    const s = Math.floor((left % 60000) / 1000);
+    t.textContent = left ? `${m}:${String(s).padStart(2, '0')}` : 'Tijd!';
+    t.classList.toggle('ending', left < 60_000);
+    if (!left && lastTimerEnd !== t.dataset.ends) { lastTimerEnd = t.dataset.ends; toast('De tijd is om.'); }
+  };
+  update();
+  timerInterval ??= setInterval(update, 1000);
+}
+
+// ---------------------------------------------------------------------------
+// Markdown-export
+// ---------------------------------------------------------------------------
+function boardMarkdown(b) {
+  const out = [`# ${b.title}`, ''];
+  if (b.question) out.push(`**Centrale vraag:** ${b.question}`, '');
+  if (b.description) out.push(b.description, '');
+  out.push(`_Geëxporteerd op ${new Date().toLocaleString('nl-NL')}_`, '');
+  const ranked = sortedIdeas(boardIdeas());
+  for (const c of b.clusters ?? []) {
+    const ideas = ranked.filter((i) => i.clusterId === c.id);
+    if (!ideas.length) continue;
+    out.push(`## ${c.name}`, '');
+    for (const idea of ideas) {
+      const st = ratingStats(idea);
+      const meta = [votesLabel(sum(idea.votes)), st.impact != null && `impact ${st.impact.toFixed(1)}`, st.effort != null && `inspanning ${st.effort.toFixed(1)}`, idea.status !== 'open' && idea.status, `door ${idea.fromAi ? 'Claude' : nameOf(idea.authorId)}`].filter(Boolean);
+      out.push(`### ${idea.text}`, `_${meta.join(' · ')}_`, '');
+      if (idea.details) out.push(idea.details, '');
+      for (const k of ROLE_KEYS) { const p = idea.perspectives?.[k]; if (p) out.push(`- **${ROLES[k].label}** (${p.sentiment}): ${p.text}`); }
+      for (const cm of Object.values(idea.comments ?? {}).filter(Boolean)) out.push(`- Reactie van ${nameOf(cm.authorId)}: ${cm.text}`);
+      out.push('');
+    }
+  }
+  const decisions = boardItems('decision');
+  if (decisions.length) out.push('## Besluiten', '', ...decisions.map((d) => `- ${d.text}`), '');
+  const actions = boardItems('action');
+  if (actions.length) { out.push('## Acties', ''); for (const a of actions) out.push(`- [${a.done ? 'x' : ' '}] ${a.text} — ${nameOf(a.ownerId)}${a.due ? ` (voor ${a.due})` : ''}`); out.push(''); }
+  if (b.notes) out.push('## Sessienotities', '', b.notes, '');
+  if (b.aiSummary) out.push('## Samenvatting door Claude', '', b.aiSummary.text, '');
+  return out.join('\n');
+}
+
+// ---------------------------------------------------------------------------
+// Claude (sample-capability)
+// ---------------------------------------------------------------------------
+const AI_INTRO = `Je bent een scherpe, constructieve sparringpartner voor een team van vier partners die samen een onderneming bouwen.
+
+Het team:
+- Enterprise Architect: kijkt naar landschap, capabilities, strategie en governance.
+- Product Manager: kijkt naar klantwaarde, markt, validatie en onderscheidend vermogen.
+- HR / Business Lead: kijkt naar mensen, organisatie, cultuur, verdienmodel en business case.
+- Solution Architect: kijkt naar technische haalbaarheid, integraties, data en security.
+
+Het team heeft diepe ervaring met ServiceNow (ITSM, ITOM, HRSD, CSM, SecOps, App Engine, IntegrationHub, Now Assist) en wil de horizon verbreden: andere platformen, sectoren, diensten en eigen producten. Help ze verder te kijken dan hun huidige comfortzone, maar benut ook expliciet hun bestaande sterktes (procesdenken, workflow-automatisering, enterprise-architectuur, implementatie-ervaring, verandermanagement).
+
+Werkwijze: schrijf in het Nederlands, zakelijk maar informeel (je/jullie). Wees concreet en noem waar relevant echte platformen, markten, standaarden of bedrijfsmodellen. Durf tegen te spreken en blinde vlekken te benoemen. Houd het compact, zonder inleidende of afsluitende beleefdheidszinnen.`;
+
+function boardContext(b) {
+  const cl = (cid) => (b.clusters ?? []).find((c) => c.id === cid)?.name ?? 'Overig';
+  const lines = [`# Sessie: ${b.title}`, b.question && `Centrale vraag: ${b.question}`, b.description && `Context: ${b.description}`, `Thema's: ${(b.clusters ?? []).map((c) => c.name).join(', ')}`, '', '## Ideeën'];
+  const ideas = boardIdeas();
+  if (!ideas.length) lines.push('(nog geen ideeën)');
+  for (const idea of ideas) {
+    lines.push(`- (${cl(idea.clusterId)}; ${votesLabel(sum(idea.votes))}; status ${idea.status}) ${idea.text}`);
+    if (idea.details) lines.push(`  Toelichting: ${idea.details}`);
+    for (const k of ROLE_KEYS) { const p = idea.perspectives?.[k]; if (p) lines.push(`  Perspectief ${ROLES[k].label} (${p.sentiment}): ${p.text}`); }
+    for (const c of Object.values(idea.comments ?? {}).filter(Boolean).slice(-5)) lines.push(`  Reactie: ${c.text}`);
+  }
+  const decisions = boardItems('decision');
+  if (decisions.length) lines.push('', '## Besluiten', ...decisions.map((d) => `- ${d.text}`));
+  if (b.notes) lines.push('', '## Sessienotities', b.notes.slice(0, 6000));
+  return lines.filter((l) => typeof l === 'string').join('\n').slice(0, 60_000);
+}
+
+let aiCtl = null;
+async function runAi(kind, fn, target = null) {
+  if (!S.cap.sample || S.aiBusy) return;
+  if (!guardWrite()) return;
+  aiCtl = new AbortController();
+  S.aiBusy = kind; S.aiTarget = target; S.aiStream = '';
+  render();
+  try {
+    await fn(aiCtl.signal);
+  } catch (e) {
+    const msg = {
+      cancelled: null,
+      not_granted: 'Claude heeft geen toestemming gekregen voor deze pagina.',
+      sampling_disabled: 'Claude is niet beschikbaar voor dit account.',
+      rate_limited: 'Je hebt Claude net vaak gebruikt. Probeer het over een paar minuten opnieuw.',
+      refused: 'Claude wilde dit verzoek niet beantwoorden. Formuleer de vraag anders.',
+      invalid_json: 'Het antwoord van Claude kon niet worden verwerkt. Probeer het opnieuw.',
+      session_expired: 'Je sessie is verlopen. Log opnieuw in op claude.ai.',
+    }[e?.code] ?? (e?.code ? 'Claude gaf een fout. Probeer het opnieuw.' : null);
+    if (msg) toast(msg, 'error');
+    if (!e?.code) console.error(e);
+  } finally {
+    S.aiBusy = null; S.aiTarget = null; S.aiStream = ''; S.pendingQuestion = null;
+    render();
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Acties
+// ---------------------------------------------------------------------------
+function clearDraft(...keys) {
+  for (const k of keys) {
+    delete S.drafts[k];
+    for (const el of root.querySelectorAll(`[data-draft="${CSS.escape(k)}"]`)) el.value = '';
+  }
+  render();
+}
+
+const actions = {
+  home(el, e) { e.preventDefault(); go(null); },
+  'open-board'(el) { go(el.dataset.id); },
+  'change-role'() { S.ui.changeRole = true; render(); },
+  'cancel-role'() { S.ui.changeRole = false; render(); },
+  async 'pick-role'(el) {
+    if (S.readOnly || S.canWrite === false) return toast('Je hebt alleen leesrechten.');
+    const role = el.dataset.role;
+    const holder = memberForRole(role);
+    if (holder && holder !== S.me) return toast('Die rol is al gekozen.');
+    await setDoc(`members/${S.me}`, { role, joinedAt: S.members[S.me]?.joinedAt ?? nowIso() });
+    S.ui.changeRole = false;
+    render();
+  },
+  'toggle-new-board'() { S.ui.newBoard = !S.ui.newBoard; render(); },
+  'toggle-archived'() { S.ui.showArchived = !S.ui.showArchived; render(); },
+  'pick-template'(el) { S.ui.template = el.dataset.key; render(); },
+  async 'create-board'() {
+    if (!guardWrite()) return;
+    const tpl = TEMPLATES.find((t) => t.key === S.ui.template);
+    const id = newId('boards');
+    await setDoc(`boards/${id}`, {
+      title: draft('nb.title').trim().slice(0, 120) || tpl.title,
+      question: draft('nb.question').trim().slice(0, 500) || tpl.question,
+      description: tpl.description, template: tpl.key, phase: 'verkennen',
+      createdAt: nowIso(), updatedAt: nowIso(), createdBy: S.me, archived: false, timer: null, notes: '',
+      clusters: tpl.clusters.map((name) => ({ id: uid(), name })),
+    });
+    S.ui.newBoard = false;
+    delete S.drafts['nb.title']; delete S.drafts['nb.question'];
+    go(id);
+  },
+  'add-opportunity'() {
+    if (!guardWrite()) return;
+    const title = draft('opp.title').trim();
+    if (!title) return;
+    setDoc(`opportunities/${newId('opportunities')}`, { title: title.slice(0, 200), description: '', stage: 'verkennen', ownerId: S.me, source: null, createdAt: nowIso() });
+    clearDraft('opp.title');
+  },
+  'remove-opportunity'(el) {
+    if (!guardWrite()) return;
+    confirmModal('Kans verwijderen?', 'Deze kans verdwijnt van de radar voor het hele team.', 'Verwijderen', () => deleteDoc(`opportunities/${el.dataset.id}`));
+  },
+  tab(el) { S.tab = el.dataset.key; render(); },
+  phase(el) { if (guardWrite()) touchBoard({ phase: el.dataset.key }); },
+  timer(el) {
+    if (!guardWrite()) return;
+    const m = Number(el.dataset.min);
+    touchBoard({ timer: m > 0 ? { endsAt: new Date(Date.now() + m * 60_000).toISOString(), minutes: m } : null });
+  },
+  'toggle-edit-header'() { S.ui.editHeader = !S.ui.editHeader; render(); },
+  'archive-board'() { if (guardWrite()) touchBoard({ archived: !board().archived }); },
+  'delete-board'() {
+    if (!guardWrite()) return;
+    const b = board();
+    confirmModal(`Sessie “${b.title}” verwijderen?`, 'Alle ideeën, perspectieven, besluiten en acties van deze sessie verdwijnen. Dit kan niet ongedaan worden gemaakt.', 'Definitief verwijderen', async () => {
+      const id = b.id;
+      go(null);
+      for (const i of S.ideas.filter((x) => x.boardId === id)) await deleteDoc(`ideas/${i.id}`);
+      for (const i of S.items.filter((x) => x.boardId === id)) await deleteDoc(`items/${i.id}`);
+      await deleteDoc(`boards/${id}`);
+      toast('Sessie verwijderd.');
+    });
+  },
+  'lens-filter'(el) { S.ui.lensFilter = el.dataset.key || null; render(); },
+  'add-idea'() {
+    if (!guardWrite()) return;
+    const text = draft('idea.text').trim();
+    if (!text) return;
+    const b = board();
+    const clusterId = (b.clusters ?? []).some((c) => c.id === draft('idea.cluster')) ? draft('idea.cluster') : b.clusters?.[0]?.id ?? null;
+    const lens = draft('idea.lens', myRole());
+    setDoc(`ideas/${newId('ideas')}`, {
+      boardId: b.id, text: text.slice(0, 280), details: '', clusterId, lens: ROLES[lens] ? lens : null,
+      authorId: S.me, createdAt: nowIso(), status: 'open', fromAi: false, votes: {}, ratings: {}, perspectives: {}, comments: {},
+    });
+    touchBoard();
+    clearDraft('idea.text');
+  },
+  'toggle-add-cluster'() { S.ui.addCluster = !S.ui.addCluster; render(); },
+  'add-cluster'() {
+    if (!guardWrite()) return;
+    const name = draft('cluster.name').trim();
+    if (!name) return;
+    touchBoard({ clusters: [...(board().clusters ?? []), { id: uid(), name: name.slice(0, 60) }] });
+    S.ui.addCluster = false;
+    clearDraft('cluster.name');
+  },
+  'rename-cluster'(el) { S.ui.renameCluster = el.dataset.id; render(); },
+  'save-cluster'(el) {
+    if (!guardWrite()) return;
+    const id = el.dataset.id;
+    const name = draft(`rename.${id}`, board().clusters.find((c) => c.id === id)?.name ?? '').trim();
+    if (name) touchBoard({ clusters: board().clusters.map((c) => (c.id === id ? { ...c, name: name.slice(0, 60) } : c)) });
+    S.ui.renameCluster = null;
+    clearDraft(`rename.${id}`);
+  },
+  'remove-cluster'(el) {
+    if (!guardWrite()) return;
+    const b = board();
+    if ((b.clusters ?? []).length <= 1) return toast('Er moet minstens één thema blijven.');
+    confirmModal('Thema verwijderen?', 'De ideeën in dit thema verhuizen naar het eerste overgebleven thema.', 'Verwijderen', async () => {
+      const rest = b.clusters.filter((c) => c.id !== el.dataset.id);
+      await touchBoard({ clusters: rest });
+      for (const i of boardIdeas().filter((x) => x.clusterId === el.dataset.id)) updateDoc(`ideas/${i.id}`, { clusterId: rest[0].id });
+    });
+  },
+  vote(el) {
+    if (!guardWrite()) return;
+    const idea = boardIdeas().find((i) => i.id === el.dataset.id);
+    if (!idea) return;
+    const delta = Number(el.dataset.delta) < 0 ? -1 : 1;
+    const used = boardIdeas().reduce((s, i) => s + (Number(i.votes?.[S.me]) || 0), 0);
+    if (delta > 0 && used >= MAX_VOTES) return toast(`Je hebt al je ${MAX_VOTES} stemmen gebruikt. Neem er eerst een terug.`);
+    const next = Math.max(0, (Number(idea.votes?.[S.me]) || 0) + delta);
+    updateDoc(`ideas/${idea.id}`, { votes: { [S.me]: next } });
+  },
+  'open-idea'(el, e) { e.preventDefault(); S.ui.openIdea = el.dataset.id; render(); },
+  'close-idea'() { S.ui.openIdea = null; render(); },
+  'idea-status'(el) { if (guardWrite()) updateDoc(`ideas/${el.dataset.id}`, { status: el.dataset.status }); },
+  sentiment(el) {
+    if (!guardWrite()) return;
+    const text = document.getElementById('my-perspective')?.value.trim();
+    if (!text) return toast('Schrijf eerst je perspectief op.');
+    updateDoc(`ideas/${el.dataset.id}`, { perspectives: { [myRole()]: { text: text.slice(0, 2000), sentiment: el.dataset.sentiment, by: S.me, updatedAt: nowIso() } } });
+  },
+  rate(el) {
+    if (!guardWrite()) return;
+    const value = el.dataset.value ? Number(el.dataset.value) : null;
+    updateDoc(`ideas/${el.dataset.id}`, { ratings: { [S.me]: { [el.dataset.field]: value } } });
+  },
+  'add-comment'(el) {
+    if (!guardWrite()) return;
+    const key = `comment.${el.dataset.id}`;
+    const text = draft(key).trim();
+    if (!text) return;
+    updateDoc(`ideas/${el.dataset.id}`, { comments: { [uid()]: { authorId: S.me, text: text.slice(0, 1000), createdAt: nowIso() } } });
+    clearDraft(key);
+  },
+  'remove-idea'(el) {
+    if (!guardWrite()) return;
+    confirmModal('Idee verwijderen?', 'Het idee verdwijnt met alle stemmen, perspectieven en reacties.', 'Verwijderen', () => {
+      S.ui.openIdea = null;
+      deleteDoc(`ideas/${el.dataset.id}`);
+    });
+  },
+  async 'to-radar'(el) {
+    if (!guardWrite()) return;
+    const idea = boardIdeas().find((i) => i.id === el.dataset.id);
+    await setDoc(`opportunities/${newId('opportunities')}`, { title: idea.text, description: idea.details ?? '', stage: 'verkennen', ownerId: S.me, source: { boardId: S.board, ideaId: idea.id }, createdAt: nowIso() });
+    toast('Toegevoegd aan de kansenradar.');
+  },
+  async 'accept-suggestion'(el) {
+    if (!guardWrite()) return;
+    const s = boardItems('suggestion').find((x) => x.id === el.dataset.id);
+    if (!s) return;
+    await setDoc(`ideas/${newId('ideas')}`, {
+      boardId: S.board, text: s.text, details: s.details ?? '', clusterId: s.clusterId, lens: s.lens, authorId: S.me,
+      createdAt: nowIso(), status: 'open', fromAi: true, votes: {}, ratings: {}, perspectives: {}, comments: {},
+    });
+    deleteDoc(`items/${s.id}`);
+  },
+  'dismiss-suggestion'(el) { if (guardWrite()) deleteDoc(`items/${el.dataset.id}`); },
+  'add-decision'() {
+    if (!guardWrite()) return;
+    const text = draft('decision.text').trim();
+    if (!text) return;
+    setDoc(`items/${newId('items')}`, { boardId: S.board, kind: 'decision', text: text.slice(0, 500), by: S.me, createdAt: nowIso() });
+    clearDraft('decision.text');
+  },
+  'add-action'() {
+    if (!guardWrite()) return;
+    const text = draft('action.text').trim();
+    if (!text) return;
+    const due = draft('action.due');
+    setDoc(`items/${newId('items')}`, { boardId: S.board, kind: 'action', text: text.slice(0, 300), ownerId: draft('action.owner', S.me), due: /^\d{4}-\d{2}-\d{2}$/.test(due) ? due : '', done: false, by: S.me, createdAt: nowIso() });
+    clearDraft('action.text', 'action.due');
+  },
+  'remove-item'(el) { if (guardWrite()) deleteDoc(`items/${el.dataset.id}`); },
+  async 'copy-md'() {
+    const text = boardMarkdown(board());
+    try { await navigator.clipboard.writeText(text); toast('Markdown gekopieerd.'); }
+    catch { toast('Kopiëren lukte niet in deze weergave. Gebruik Download.', 'error'); }
+  },
+  async 'download-md'() {
+    const b = board();
+    const name = (b.title.replace(/[^\w\- ]+/g, '').trim().replace(/\s+/g, '-').toLowerCase() || 'sessie') + '.md';
+    try { await S.cap.downloads.save({ filename: name, data: boardMarkdown(b) }); }
+    catch (e) { if (e?.code !== 'dismissed' && e?.code !== 'cancelled') toast('Downloaden lukte niet.', 'error'); }
+  },
+  'modal-cancel'(el, e) {
+    if (e.target.closest('[data-stop]') && el.classList.contains('modal-backdrop')) return;
+    S.modal = null; render();
+  },
+  async 'modal-confirm'() { const m = S.modal; S.modal = null; render(); await m?.onConfirm?.(); },
+
+  // Claude
+  'ai-stop'() { aiCtl?.abort(); },
+  'ai-ideas'() {
+    const b = board();
+    const focus = draft('ai.focus').trim().slice(0, 300);
+    runAi('ideas', async (signal) => {
+      const prompt = `${AI_INTRO}\n\n${boardContext(b)}\n\n---\nBedenk 8 nieuwe, onderling verschillende ideeën die de centrale vraag beantwoorden en nog níet op het bord staan. Verdeel ze over de vier perspectieven (lens: "ea" = Enterprise Architect, "pm" = Product Manager, "hr" = HR/Business Lead, "sa" = Solution Architect), zodat elke rol minstens één idee vanuit de eigen invalshoek krijgt. Mix veilige uitbreidingen van wat het team al kan met een paar gedurfde ideeën die echt buiten de ServiceNow-wereld liggen.${focus ? `\nExtra focus van het team: ${focus}` : ''}\n\nAntwoord uitsluitend met een JSON-array van objecten met de velden "text" (het idee in één krachtige zin, max ~20 woorden), "details" (twee à drie zinnen: waarom kansrijk, hoe te starten), "lens" (ea, pm, hr of sa) en "cluster" (exact één van: ${(b.clusters ?? []).map((c) => JSON.stringify(c.name)).join(', ')}).`;
+      const ideas = await S.cap.sample.json(prompt, { signal, cache: false });
+      if (!Array.isArray(ideas)) throw { code: 'invalid_json' };
+      for (const idea of ideas.slice(0, 12)) {
+        if (!idea || typeof idea.text !== 'string') continue;
+        const cluster = (b.clusters ?? []).find((c) => c.name.toLowerCase() === String(idea.cluster ?? '').toLowerCase());
+        await setDoc(`items/${newId('items')}`, { boardId: b.id, kind: 'suggestion', text: idea.text.slice(0, 280), details: String(idea.details ?? '').slice(0, 2000), lens: ROLES[idea.lens] ? idea.lens : null, clusterId: cluster?.id ?? b.clusters?.[0]?.id ?? null, by: S.me, createdAt: nowIso() });
+      }
+      toast('Nieuwe suggesties van Claude staan klaar.');
+    });
+  },
+  'ai-challenge'(el) {
+    const b = board();
+    const idea = boardIdeas().find((i) => i.id === el.dataset.id);
+    runAi('challenge', async (signal) => {
+      const prompt = `${AI_INTRO}\n\n${boardContext(b)}\n\n---\nSpeel advocaat van de duivel voor dit idee: "${idea.text}"${idea.details ? ` (${idea.details})` : ''}. Bekijk het door de bril van elk van de vier rollen, benoem risico's en aannames, en stel een klein, concreet experiment voor dat binnen twee weken iets leert.\n\nAntwoord uitsluitend met één JSON-object: {"perspectives": {"ea": string, "pm": string, "hr": string, "sa": string}, "risks": [3 strings], "assumptions": [3 strings], "experiment": string}. Elke perspectief-tekst is 2-3 zinnen met een scherpe vraag.`;
+      const r = await S.cap.sample.json(prompt, { signal, cache: false });
+      if (!r || typeof r !== 'object' || !r.perspectives) throw { code: 'invalid_json' };
+      const clean = {
+        perspectives: Object.fromEntries(ROLE_KEYS.map((k) => [k, String(r.perspectives[k] ?? '').slice(0, 1200)])),
+        risks: (Array.isArray(r.risks) ? r.risks : []).slice(0, 5).map((x) => String(x).slice(0, 400)),
+        assumptions: (Array.isArray(r.assumptions) ? r.assumptions : []).slice(0, 5).map((x) => String(x).slice(0, 400)),
+        experiment: String(r.experiment ?? '').slice(0, 1200), createdAt: nowIso(), by: S.me,
+      };
+      await updateDoc(`ideas/${idea.id}`, { aiChallenge: clean });
+    }, idea.id);
+  },
+  'ai-summary'() {
+    const b = board();
+    runAi('summary', async (signal) => {
+      const prompt = `${AI_INTRO}\n\n${boardContext(b)}\n\n---\nMaak een samenvatting van deze sessie in Markdown met de kopjes:\n## Kern in drie zinnen\n## Sterkste ideeën (met waarom)\n## Waar de perspectieven botsen of blinde vlekken zitten\n## Open vragen\n## Voorgestelde volgende stappen (concreet, met suggestie welke rol trekt)`;
+      const { text } = await S.cap.sample(prompt, { signal, cache: false, onText: ({ text }) => { S.aiStream = text; render(); } });
+      await touchBoard({ aiSummary: { text: text.slice(0, 20_000), createdAt: nowIso(), by: S.me } });
+    });
+  },
+  'ai-ask'() {
+    const question = draft('ai.question').trim().slice(0, 2000);
+    if (!question) return;
+    clearDraft('ai.question');
+    askClaude(question);
+  },
+  'ask-preset'(el) { askClaude(el.dataset.q); },
+};
+
+function askClaude(question) {
+  const b = board();
+  const history = boardItems('qa').slice(-6);
+  runAi('ask', async (signal) => {
+    S.pendingQuestion = question;
+    const turns = [{ role: 'user', content: `${AI_INTRO}\n\n${boardContext(b)}\n\n---\nHet team stelt je vragen over deze sessie. Beantwoord ze in Markdown.` }];
+    for (const t of history) { turns.push({ role: 'user', content: t.question }); turns.push({ role: 'assistant', content: t.answer }); }
+    turns.push({ role: 'user', content: question });
+    const { text } = await S.cap.sample(turns, { signal, cache: false, onText: ({ text }) => { S.aiStream = text; render(); } });
+    await setDoc(`items/${newId('items')}`, { boardId: b.id, kind: 'qa', question, answer: text.slice(0, 20_000), by: S.me, createdAt: nowIso() });
+  });
+}
+
+const changeHandlers = {
+  'board-field'(el) { if (guardWrite()) { const v = el.value.trim(); if (el.dataset.field === 'title' && !v) return; touchBoard({ [el.dataset.field]: v.slice(0, el.dataset.field === 'description' ? 2000 : 500) }); } },
+  'board-notes'(el) { if (guardWrite()) touchBoard({ notes: el.value.slice(0, 20_000) }); },
+  'idea-field'(el) {
+    if (!guardWrite()) return;
+    let v = el.value;
+    if (el.dataset.field === 'text') { v = v.trim().slice(0, 280); if (!v) return; }
+    if (el.dataset.field === 'details') v = v.slice(0, 2000);
+    if (el.dataset.field === 'lens') v = ROLES[v] ? v : null;
+    updateDoc(`ideas/${el.dataset.id}`, { [el.dataset.field]: v });
+  },
+  perspective(el) {
+    if (!guardWrite()) return;
+    const idea = boardIdeas().find((i) => i.id === el.dataset.id);
+    const text = el.value.trim().slice(0, 2000);
+    const sentiment = idea?.perspectives?.[myRole()]?.sentiment ?? 'neutraal';
+    updateDoc(`ideas/${el.dataset.id}`, { perspectives: { [myRole()]: text ? { text, sentiment, by: S.me, updatedAt: nowIso() } : null } });
+  },
+  'toggle-parked'(el) { S.ui.showParked = el.checked; render(); },
+  'toggle-action'(el) {
+    if (!guardWrite()) return;
+    const a = S.items.find((i) => i.id === el.dataset.id);
+    updateDoc(`items/${el.dataset.id}`, { done: !a?.done });
+  },
+  'opp-stage'(el) { if (guardWrite()) updateDoc(`opportunities/${el.dataset.id}`, { stage: el.value }); },
+  'opp-owner'(el) { if (guardWrite()) updateDoc(`opportunities/${el.dataset.id}`, { ownerId: el.value }); },
+};
+
+root.addEventListener('click', (e) => {
+  const el = e.target.closest('[data-action]');
+  if (!el || !root.contains(el)) return;
+  if (el.tagName === 'A' && el.getAttribute('href') !== '#') return;
+  if (el.classList.contains('modal-backdrop') && e.target.closest('.modal')) return;
+  actions[el.dataset.action]?.(el, e);
+});
+root.addEventListener('input', (e) => { const k = e.target.dataset?.draft; if (k) S.drafts[k] = e.target.value; });
+root.addEventListener('change', (e) => {
+  const el = e.target;
+  if (el.dataset.draft) { S.drafts[el.dataset.draft] = el.value; return; }
+  if (el.dataset.change) changeHandlers[el.dataset.change]?.(el);
+});
+root.addEventListener('keydown', (e) => {
+  const el = e.target;
+  if (e.key === 'Enter' && !e.shiftKey && !e.isComposing && el.dataset?.enter) {
+    e.preventDefault();
+    if (el.dataset.draft) S.drafts[el.dataset.draft] = el.value;
+    actions[el.dataset.enter]?.(el, e);
+  }
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape') return;
+  if (S.modal) { S.modal = null; render(); }
+  else if (S.ui.openIdea) { document.activeElement?.blur(); S.ui.openIdea = null; render(); }
+});
+
+// ---------------------------------------------------------------------------
+// Start
+// ---------------------------------------------------------------------------
+async function start() {
+  readHash();
+  const use = (name) => (window.claude?.use ? window.claude.use(name).catch(() => null) : Promise.resolve(null));
+  const [db, user, room, sample, downloads] = await Promise.all(['db', 'user', 'room', 'sample', 'downloads'].map(use));
+  S.cap = { db, user, room, sample, downloads };
+  S.started = true;
+  if (user) {
+    S.me = await user.id();
+    S.canWrite = await user.can('data.write');
+  }
+  if (db) subscribe();
+  if (room) {
+    room.onPeers(({ peers }) => { S.peers = peers.filter((p) => p.kind === 'viewer'); scheduleProfiles(); render(); }, () => {});
+    room.presence({ board: S.board ?? null }).catch(() => {});
+  }
+  render();
+  setInterval(() => { if (S.cap.db) render(); }, 60_000);
+}
+render();
+start();
+})();
+</script>
