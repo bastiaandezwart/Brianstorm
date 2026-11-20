@@ -89,3 +89,11 @@ Opnieuw draaien: `./uat/run.sh`. Je hebt Playwright en `npm install` nodig.
 1. **Tweede account:** de eerste partner laten inloggen via de deelknop, een rol laten kiezen en samen één sessie doorlopen. Dit test echte accounts, echte rechten en de echte live-updates.
 2. **Claude:** één keer Claude laten meedenken en beoordelen of de ideeën en kritische vragen inhoudelijk bruikbaar zijn.
 3. **Schermlezer:** een korte proef met een schermlezer (VoiceOver of NVDA). Die stap kan geen automatische scan vervangen.
+
+## Update versie 4: inchecken als persoon
+
+Geen rollen meer: je checkt in als Mart, Joey, Timon of Bastiaan, of je doet mee als gast. In de app staan alleen voornamen. Iedereen houdt zijn eigen expertise bij, en Claude gebruikt die bij ideeën, kritische vragen en samenvattingen. Bij een voorgesteld idee staat bij wie het het beste past. De drie extra perspectieven heten nu **toetsen**: klantwaarde, commercie, en risico & compliance.
+
+Scenario's aangepast en toegevoegd: U28 (alleen voornamen), U29 (expertise invullen, alleen je eigen kaart), U30 (Claude krijgt de expertise mee). Resultaat: **30 van 30 geslaagd**.
+
+Nieuwe bevinding, opgelost: na het terugzetten van een gearchiveerde sessie bleef de startpagina het lege archief tonen. Bij het openen van een sessie keert de weergave nu terug naar de actieve sessies.

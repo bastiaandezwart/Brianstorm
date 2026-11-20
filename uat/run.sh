@@ -9,4 +9,4 @@ python3 -m http.server 3456 --directory .site >/dev/null 2>&1 &
 SERVER=$!
 trap 'kill $SERVER' EXIT
 sleep 1
-node uat.cjs
+node ${UAT_FILE:-uat.cjs}

@@ -6,6 +6,7 @@ const rec = (id, name, status, note = '') => { results.push({ id, name, status, 
 (async () => {
   const browser = await chromium.launch();
   const ctx = await browser.newContext({ viewport: { width: 1366, height: 860 } });
+  ctx.setDefaultTimeout(8000);
   await ctx.addInitScript({ content: fs.readFileSync(__dirname + '/mock-claude.js', 'utf8') });
   await ctx.route('https://cdn.jsdelivr.net/**', (r) => r.fulfill({ contentType: 'application/javascript', body: fs.readFileSync(require.resolve('morphdom/dist/morphdom-umd.min.js'), 'utf8') }));
   await ctx.route('https://fonts.**', (r) => r.fulfill({ contentType: 'text/css', body: '' }));
@@ -14,9 +15,9 @@ const rec = (id, name, status, note = '') => { results.push({ id, name, status, 
   const T = async (id, name, fn) => { try { const r = await fn(); if (r && r.status) rec(id, name, r.status, r.note); else rec(id, name, 'PASS'); } catch (e) { rec(id, name, 'FAIL', String(e.message).split('\n')[0].slice(0, 160)); } };
 
   let A, B, C, D, hash;
-  await T('U01', 'Eerste bezoek: rol kiezen en uitleg zien', async () => {
+  await T('U01', 'Eerste bezoek: inchecken met voornaam en uitleg zien', async () => {
     A = await open('u_bas'); await A.waitForSelector('.role-pick', { timeout: 4000 });
-    await A.click('[data-action=pick-role][data-role=sa]'); await A.waitForSelector('.help-steps');
+    await A.click('[data-action=check-in][data-person=bastiaan]'); await A.waitForSelector('.help-steps');
   });
   await T('U02', 'Sessie starten vanuit sjabloon met eigen vraag', async () => {
     await A.click('[data-action=toggle-new-board]'); await A.click('[data-action=pick-template][data-key=horizon]');
@@ -45,7 +46,7 @@ const rec = (id, name, status, note = '') => { results.push({ id, name, status, 
     await A.waitForFunction((n) => document.querySelectorAll('.column').length === n - 1, n);
   });
   await T('U06', 'Tweede partner ziet alles live; eigen typen blijft staan', async () => {
-    B = await open('u_anna'); await B.click('[data-action=pick-role][data-role=pm]'); await B.click('[data-action=open-board]');
+    B = await open('u_anna'); await B.click('[data-action=check-in][data-person=joey]'); await B.click('[data-action=open-board]');
     await B.waitForFunction(() => document.querySelectorAll('.card').length === 4);
     await B.fill('#idea-text', 'Concept van Anna');
     await A.fill('#idea-text', 'Data & AI-diensten'); await A.keyboard.press('Enter');
@@ -72,10 +73,10 @@ const rec = (id, name, status, note = '') => { results.push({ id, name, status, 
     const ok = await B.evaluate(() => document.querySelectorAll('.card.shortlist').length >= 1);
     if (!ok) throw new Error('shortlist niet zichtbaar bij partner');
   });
-  await T('U10', 'Perspectief geven; rol van een ander is niet te bewerken', async () => {
+  await T('U10', 'Oordeel geven; dat van een ander is niet te bewerken', async () => {
     await A.click('.tab[data-key=perspectieven]'); await A.click('.pcell.mine >> nth=0');
-    await A.fill('#persp-sa', 'Goed haalbaar, workflowkennis herbruikbaar.'); await A.click('[data-action=sentiment][data-key=sa][data-sentiment=kans]');
-    if (await A.locator('#persp-pm').count()) throw new Error('kan PM-perspectief bewerken');
+    await A.fill('#persp-bastiaan', 'Goed haalbaar, workflowkennis herbruikbaar.'); await A.click('[data-action=sentiment][data-key=bastiaan][data-sentiment=kans]');
+    if (await A.locator('#persp-joey').count()) throw new Error('kan oordeel van Joey bewerken');
     await A.keyboard.press('Escape');
   });
   await T('U11', 'Reactie plaatsen en eigen reactie verwijderen', async () => {
@@ -141,13 +142,13 @@ const rec = (id, name, status, note = '') => { results.push({ id, name, status, 
   await T('U20', 'Export: Markdown downloaden', async () => {
     await A.click('[data-action=open-board]'); await A.click('[data-action=download-md]');
   });
-  await T('U21', 'Vijfde persoon (alle rollen bezet) kan meedoen', async () => {
-    C = await open('u_erik'); await C.click('[data-action=pick-role][data-role=ea]');
-    D = await open('u_hanna'); await D.click('[data-action=pick-role][data-role=hr]');
+  await T('U21', 'Gast (alle vier ingecheckt) kan meedoen', async () => {
+    C = await open('u_erik'); await C.click('[data-action=check-in][data-person=mart]');
+    D = await open('u_hanna'); await D.click('[data-action=check-in][data-person=timon]');
     const E = await open('u_vijf'); await E.waitForSelector('.role-pick');
-    const way = await E.locator('[data-action=no-role]').count();
+    const way = await E.locator('[data-action=as-guest]').count();
     if (!way) throw new Error('alle rollen bezet: geen manier om verder te gaan');
-    await E.click('[data-action=no-role]'); await E.waitForSelector('.hero');
+    await E.click('[data-action=as-guest]'); await E.waitForSelector('.hero');
     await E.click('[data-action=open-board]'); await E.fill('#idea-text', 'Idee van een gast'); await E.keyboard.press('Enter'); await A.waitForSelector('.card >> text=Idee van een gast').catch(() => {});
   });
   await T('U22', 'Alleen-lezen gebruiker kan meekijken', async () => {
@@ -177,6 +178,26 @@ const rec = (id, name, status, note = '') => { results.push({ id, name, status, 
     const out = [];
     for (const [p, sel] of [[A, null], [B, null]]) { await p.addScriptTag({ content: AXE }); const v = await p.evaluate(async () => (await axe.run(document, { runOnly: ['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'] })).violations.map((x) => x.id)); out.push(...v); }
     if (out.length) throw new Error(out.join(', '));
+  });
+  await T('U28', 'Alleen voornamen zichtbaar, ook voor accounts met een volledige naam', async () => {
+    const txt = await A.evaluate(() => document.body.innerText);
+    for (const full of ['Anna Jansen', 'Erik de Vries', 'Hanna Bakker', 'Vera Vijf']) if (txt.includes(full)) throw new Error('volledige naam zichtbaar: ' + full);
+    if (!txt.includes('Joey')) throw new Error('voornaam Joey ontbreekt');
+  });
+  await T('U29', 'Eigen expertise invullen; zichtbaar bij partner', async () => {
+    await A.click('[data-action=home]'); await A.click('[data-action=edit-expertise][data-key=bastiaan]');
+    await A.fill('#exp-bastiaan', 'Solution Architect, ServiceNow-integraties en oplossingsontwerp.'); await A.click('[data-action=edit-expertise][data-key=""]');
+    await B.click('[data-action=home]'); await B.waitForSelector('.team-card >> text=ServiceNow-integraties', { timeout: 3000 });
+    if (await B.locator('[data-action=edit-expertise][data-key=bastiaan]').count()) throw new Error('Joey kan de kaart van Bastiaan bewerken');
+  });
+  await T('U30', 'Claude krijgt de expertise mee bij het genereren van ideeën', async () => {
+    await A.click('[data-action=open-board]'); await A.click('.tab[data-key=ideeen]');
+    await A.click('[data-action=ai-ideas]'); await A.waitForSelector('.suggestion');
+    const prompt = await A.evaluate(() => window.__lastPrompt || '');
+    if (!prompt.includes('ServiceNow-integraties en oplossingsontwerp')) throw new Error('expertise niet in prompt');
+    if (!prompt.includes('Joey') || /Enterprise Architect|Product Manager/.test(prompt)) throw new Error('prompt bevat nog rollen of mist namen');
+    if (!(await A.locator('.suggestion >> text=Past bij').count())) throw new Error('geen "Past bij" bij suggesties');
+    await A.click('[data-action=dismiss-suggestion] >> nth=0'); await A.click('[data-action=dismiss-suggestion] >> nth=0');
   });
   rec('U27', 'Geen JavaScript-fouten tijdens de test', errors.length ? 'FAIL' : 'PASS', errors.slice(0, 3).join(' | '));
   fs.writeFileSync(__dirname + '/resultaten.json', JSON.stringify(results, null, 2));

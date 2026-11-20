@@ -31,7 +31,7 @@ Een realtime brainstorm- en sparringapp voor ons partnerteam. We komen allemaal 
 `artifact/brainstorm.html` is dezelfde app als Artifact voor claude.ai. Die versie heeft geen eigen server nodig:
 
 - **Opslag**: de gedeelde opslag van het Artifact.
-- **Inloggen**: ieders claude.ai-account; iedereen kiest bij het eerste bezoek een rol.
+- **Inloggen**: ieders claude.ai-account. Bij het eerste bezoek check je in met je voornaam (Mart, Joey, Timon of Bastiaan) of doe je mee als gast. Ieder houdt op de startpagina zijn eigen expertise bij; Claude gebruikt die als achtergrond.
 - **Aanwezigheid**: je ziet live wie er online is.
 - **AI**: Claude draait op het eigen account van wie op een AI-knop klikt. Er is geen API-sleutel nodig.
 
