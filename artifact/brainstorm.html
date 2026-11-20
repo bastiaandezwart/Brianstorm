@@ -146,6 +146,27 @@ label { font-size: 0.85rem; color: var(--muted); display: block; margin-bottom: 
 .typing { font-size: 0.85rem; color: var(--accent); margin-bottom: 0.4rem; }
 .list select, .list input[type=date] { padding: 0.15rem 0.3rem; font-size: 0.85rem; width: auto; }
 
+.new-badge { font-size: 0.68rem; font-weight: 700; padding: 0.05rem 0.45rem; border-radius: 999px; background: var(--accent); color: var(--accent-ink); white-space: nowrap; }
+.card.is-new { box-shadow: 0 0 0 2px var(--accent), var(--shadow); }
+.comment.is-new .body { box-shadow: inset 3px 0 0 var(--accent); }
+.news { display: flex; flex-direction: column; gap: 0.1rem; margin: 0.4rem 0 0; padding: 0; list-style: none; }
+.news button { all: unset; box-sizing: border-box; display: flex; gap: 0.6rem; align-items: center; width: 100%; padding: 0.45rem 0.5rem; border-radius: 8px; cursor: pointer; font-size: 0.9rem; }
+.news button:hover { background: var(--surface-2); }
+.news button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.news .what { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.since-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem; padding: 0.55rem 0.8rem; border-radius: 8px; background: var(--accent-soft); margin-bottom: 0.9rem; font-size: 0.9rem; }
+.silent { border: 1px solid var(--border); border-left: 4px solid var(--warn); background: var(--surface); border-radius: var(--radius); padding: 0.75rem 0.9rem; margin-bottom: 0.9rem; }
+.silent ul { margin: 0.4rem 0 0; padding-left: 1.1rem; }
+.silent li { margin-bottom: 0.2rem; }
+.silent .who { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.5rem; }
+.canvas-field { display: flex; flex-direction: column; gap: 0.25rem; }
+.canvas-field .hint { font-size: 0.8rem; color: var(--muted); margin: 0; }
+.progress { font-size: 0.75rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.decision { font-size: 0.72rem; font-weight: 700; padding: 0.1rem 0.5rem; border-radius: 999px; }
+.decision.doorgaan { background: var(--kans); color: var(--kans-text); }
+.decision.stoppen { background: var(--zorg); color: var(--zorg-text); }
+.decision.bijsturen { background: var(--neutraal); color: var(--text); }
+
 /* Home */
 .hero { display: flex; align-items: flex-end; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
 .hero h1 { font-size: 1.7rem; margin: 0; }
@@ -389,6 +410,17 @@ const TEMPLATES = [
     clusters: ['Markt & klant', 'Techniek', 'Mensen & organisatie', 'Financieel', 'Maatregelen'] },
   { key: 'vrij', title: 'Vrije brainstorm', question: '', description: '', clusters: ['Ideeën'] },
 ];
+const CANVAS = [
+  { key: 'probleem', label: 'Probleem', hint: 'Welk probleem lossen we op? Hoe merkt de klant dat nu?' },
+  { key: 'klant', label: 'Klant', hint: 'Voor wie precies? Wie beslist, en wie betaalt?' },
+  { key: 'waarde', label: 'Waardepropositie', hint: 'Wat krijgt de klant, en waarom van ons en niet van een ander?' },
+  { key: 'verdienmodel', label: 'Verdienmodel', hint: 'Hoe verdienen we eraan: project, abonnement, licentie, partnerschap?' },
+  { key: 'aanname', label: 'Belangrijkste aanname', hint: 'Wat moet waar zijn om dit te laten slagen, en weten we nog niet?' },
+  { key: 'experiment', label: 'Experiment', hint: 'Hoe toetsen we die aanname binnen twee weken, zo goedkoop mogelijk?' },
+  { key: 'resultaat', label: 'Resultaat', hint: 'Wat leverde het experiment op? Wat hebben we geleerd?' },
+];
+const DECISIONS = [['doorgaan', 'Doorgaan'], ['bijsturen', 'Bijsturen'], ['stoppen', 'Stoppen']];
+const canvasFilled = (o) => CANVAS.filter((f) => (o.canvas?.[f.key] ?? '').trim()).length;
 const MAX_VOTES = 5;
 
 // ---------------------------------------------------------------------------
@@ -402,6 +434,7 @@ const S = {
   board: null, tab: 'ideeen',
   ui: { openIdea: null, lensFilter: null, showParked: false, showArchived: false, newBoard: false, template: 'horizon', editHeader: false, addCluster: false, renameCluster: null, changeRole: false },
   drafts: {}, aiBusy: null, aiStream: '', modal: null, saving: 0, saveError: false,
+  seen: null, seenBase: {}, silentDraft: null, silentFor: null, publishing: false,
 };
 try { S.ui.helpDismissed = localStorage.getItem('bs-help-dismissed') === '1'; } catch { S.ui.helpDismissed = false; }
 const root = document.getElementById('app');
@@ -550,6 +583,14 @@ function guardWrite() {
 
 function subscribe() {
   const db = S.cap.db;
+  if (S.me) {
+    db.doc(seenPath()).onSnapshot((snap) => {
+      const first = S.seen == null;
+      S.seen = snap.exists ? snap.data() : (S.seen ?? {});
+      if (first) enterBoard(S.board);
+      render();
+    }, () => { S.seen = S.seen ?? {}; render(); });
+  }
   const timer = setTimeout(() => { if (S.loaded.size < COLLECTIONS.length) { S.slow = true; render(); } }, 10_000);
   for (const coll of COLLECTIONS) {
     db.collection(coll).onSnapshot((snap) => {
@@ -566,6 +607,7 @@ function subscribe() {
           toast(`${firstName(after.phaseBy)} zette het team op stap ${STEP_KEYS.indexOf(step.key) + 1}: ${step.label}.`, '', S.tab === step.key ? null : { label: 'Ga erheen', fn: () => { S.tab = step.key; render(); } });
         }
       }
+      if (coll === 'boards') queueMicrotask(maybePublishSilent);
       if (coll === 'members') S.members = Object.fromEntries(rows.map((r) => [r.id, r]));
       else if (coll === 'expertise') S.expertise = Object.fromEntries(rows.map((r) => [r.id, r]));
       else if (coll === 'opportunities') S.opps = rows;
@@ -580,6 +622,66 @@ function subscribe() {
       render();
     });
   }
+}
+
+// ---------- Gelezen-status (privé per persoon, in data/users/<id>/seen) ----------
+const seenPath = () => `data/users/${S.me}/seen`;
+const quietChains = new Map();
+// Schrijven zonder foutmelding: wie alleen kan lezen, kan ook zijn gelezen-status niet bewaren; dat is geen probleem.
+function quietSet(path, data) {
+  const prev = quietChains.get(path) ?? Promise.resolve();
+  const next = prev.catch(() => {}).then(() => S.cap.db.doc(path).set(data)).catch(() => {});
+  quietChains.set(path, next);
+  return next;
+}
+function markSeen(patch) {
+  if (!S.me || !S.cap.db || S.seen == null) return;
+  S.seen = { ...S.seen, ...patch, boards: { ...(S.seen.boards ?? {}), ...(patch.boards ?? {}) } };
+  quietSet(seenPath(), S.seen);
+}
+// Bij binnenkomst in een sessie: onthoud het vorige bezoek (om 'nieuw' te tonen) en sla 'nu' op.
+function enterBoard(boardId) {
+  if (!boardId || S.seen == null || boardId in S.seenBase) return;
+  S.seenBase[boardId] = S.seen.boards?.[boardId] ?? null;
+  markSeen({ boards: { [boardId]: nowIso() } });
+}
+function leaveBoard(boardId) {
+  if (!boardId || S.seen == null) return;
+  delete S.seenBase[boardId];
+  markSeen({ boards: { [boardId]: nowIso() } });
+}
+const isNew = (ts, base) => !!ts && (base == null || ts > base);
+
+// Alles wat anderen in een sessie deden, als lijst van gebeurtenissen.
+function boardEvents(boardId, base) {
+  const ev = [];
+  for (const i of S.ideas.filter((x) => x.boardId === boardId)) {
+    if (i.authorId !== S.me && isNew(i.createdAt, base)) ev.push({ kind: 'idee', ts: i.createdAt, by: i.authorId, boardId, ideaId: i.id, text: i.text });
+    for (const c of Object.values(i.comments ?? {})) if (c && c.authorId !== S.me && isNew(c.createdAt, base)) ev.push({ kind: 'reactie', ts: c.createdAt, by: c.authorId, boardId, ideaId: i.id, text: c.text });
+    for (const p of Object.values(i.perspectives ?? {})) if (p && p.by !== S.me && !p.fromAi && isNew(p.updatedAt, base)) ev.push({ kind: 'oordeel', ts: p.updatedAt, by: p.by, boardId, ideaId: i.id, text: `${sentimentLabel(p.sentiment)}: ${p.text}` });
+  }
+  for (const it of S.items.filter((x) => x.boardId === boardId)) {
+    if (it.by === S.me || !isNew(it.createdAt, base)) continue;
+    if (it.kind === 'decision') ev.push({ kind: 'besluit', ts: it.createdAt, by: it.by, boardId, text: it.text });
+    if (it.kind === 'action') ev.push({ kind: 'actie', ts: it.createdAt, by: it.by, boardId, text: it.text });
+    if (it.kind === 'qa') ev.push({ kind: 'vraag aan Claude', ts: it.createdAt, by: it.by, boardId, text: it.question });
+  }
+  return ev.sort((a, b) => b.ts.localeCompare(a.ts));
+}
+function newOnIdea(idea, base) {
+  if (base === undefined) return null;
+  if (idea.authorId !== S.me && isNew(idea.createdAt, base)) return 'Nieuw';
+  if (Object.values(idea.comments ?? {}).some((c) => c && c.authorId !== S.me && isNew(c.createdAt, base))) return 'Nieuwe reactie';
+  if (Object.values(idea.perspectives ?? {}).some((p) => p && p.by !== S.me && !p.fromAi && isNew(p.updatedAt, base))) return 'Nieuw oordeel';
+  return null;
+}
+function countLabel(evs) {
+  const n = (k) => evs.filter((e) => e.kind === k).length;
+  const parts = [];
+  const add = (k, one, many) => { const c = n(k); if (c) parts.push(`${c} ${c === 1 ? one : many}`); };
+  add('idee', 'nieuw idee', 'nieuwe ideeën'); add('reactie', 'reactie', 'reacties'); add('oordeel', 'oordeel', 'oordelen');
+  add('besluit', 'besluit', 'besluiten'); add('actie', 'actie', 'acties'); add('vraag aan Claude', 'vraag aan Claude', 'vragen aan Claude');
+  return parts.join(', ');
 }
 
 let profileTimer = null;
@@ -619,6 +721,12 @@ function onRoute() {
   const prev = S.board;
   readHash();
   if (prev !== S.board) {
+    if (prev) leaveBoard(prev);
+    if (!prev) markSeen({ radar: nowIso() });
+    enterBoard(S.board);
+    S.ui.onlyNew = false;
+    S.ui.openOpp = null;
+    watchSilentDraft();
     Object.assign(S.ui, { openIdea: null, editHeader: false, addCluster: false, renameCluster: null });
     S.tab = 'ideeen';
     S.aiStream = '';
@@ -691,7 +799,7 @@ function renderNow() {
 let lastOverlay = null;
 let returnFocusTo = null;
 function manageFocus() {
-  const overlay = S.modal ? 'modal' : S.ui.openIdea ? 'drawer' : null;
+  const overlay = S.modal ? 'modal' : S.ui.openIdea || S.ui.openOpp ? 'drawer' : null;
   // Eerst onthouden waar de focus stond: inert maken haalt de focus weg.
   if (overlay && !lastOverlay && !returnFocusTo && document.activeElement && document.activeElement !== document.body) {
     const a = document.activeElement;
@@ -778,6 +886,7 @@ function renderHome() {
       <p class="muted small" style="margin:0.8rem 0 0">Claude denkt bij elke stap mee. Kansrijke ideeën bewaar je op de kansenradar.</p>
     </section>`}
     ${S.ui.newBoard ? renderNewBoard() : ''}
+    ${renderNews()}
     <section class="section">
       <div class="section-head">
         <h2>${S.ui.showArchived ? 'Gearchiveerde sessies' : 'Sessies'}</h2>
@@ -786,8 +895,9 @@ function renderHome() {
       ${boards.length ? `<div class="board-grid">${boards.map((b) => {
         const n = S.ideas.filter((i) => i.boardId === b.id).length;
         const open = S.items.filter((i) => i.boardId === b.id && i.kind === 'action' && !i.done).length;
+        const fresh = S.seen ? boardEvents(b.id, S.seen.boards?.[b.id] ?? null).length : 0;
         return `<button class="panel board-card" data-action="open-board" data-id="${b.id}">
-          <div class="row"><span class="badge accent">${esc(phaseLabel(b.phase))}</span><span class="spacer"></span>${avatar(b.createdBy, { size: 'sm' })}</div>
+          <div class="row"><span class="badge accent">${esc(phaseLabel(b.phase))}</span>${fresh ? `<span class="new-badge">${fresh} nieuw</span>` : ''}<span class="spacer"></span>${avatar(b.createdBy, { size: 'sm' })}</div>
           <h3>${esc(b.title)}</h3>
           <div class="q">${esc(b.question || 'Geen centrale vraag')}</div>
           <div class="row muted small"><span>${n} ${n === 1 ? 'idee' : 'ideeën'}</span>${open ? `<span>· ${open} open ${open === 1 ? 'actie' : 'acties'}</span>` : ''}<span class="spacer"></span><span>${relTime(b.updatedAt)}</span></div>
@@ -796,7 +906,8 @@ function renderHome() {
     </section>
     ${renderRadar()}
     ${renderTeam()}
-  </main>`;
+  </main>
+  ${S.ui.openOpp ? renderOppDrawer() : ''}`;
 }
 
 function renderNewBoard() {
@@ -816,6 +927,24 @@ function renderNewBoard() {
   </section>`;
 }
 
+const EVENT_VERB = { idee: 'voegde een idee toe', reactie: 'reageerde', oordeel: 'gaf een oordeel', besluit: 'legde een besluit vast', actie: 'maakte een actie', 'vraag aan Claude': 'vroeg Claude' };
+function renderNews() {
+  if (!S.seen) return '';
+  const all = S.boards.filter((b) => !b.archived).flatMap((b) => boardEvents(b.id, S.seen.boards?.[b.id] ?? null).map((e) => ({ ...e, board: b })));
+  const opps = S.opps.filter((o) => o.createdBy && o.createdBy !== S.me && isNew(o.createdAt, S.seen.radar ?? null));
+  if (!all.length && !opps.length) return '';
+  all.sort((a, b) => b.ts.localeCompare(a.ts));
+  const shown = all.slice(0, 8);
+  return `<section class="panel section" aria-labelledby="news-title">
+    <div class="row"><h2 id="news-title" style="margin:0">Nieuw sinds je laatste bezoek</h2><span class="spacer"></span><button class="ghost sm" data-action="mark-all-read">Alles gelezen</button></div>
+    <ul class="news">
+      ${shown.map((e) => `<li><button data-action="open-event" data-board="${attr(e.boardId)}" data-idea="${attr(e.ideaId ?? '')}">${avatar(e.by, { size: 'sm' })}<span class="what"><strong>${esc(firstName(e.by))}</strong> ${EVENT_VERB[e.kind]} in <strong>${esc(e.board.title)}</strong>: ${esc(e.text ?? '')}</span><span class="muted small">${relTime(e.ts)}</span></button></li>`).join('')}
+      ${opps.map((o) => `<li><button data-action="open-opp" data-id="${o.id}">${avatar(o.createdBy, { size: 'sm' })}<span class="what"><strong>${esc(firstName(o.createdBy))}</strong> zette een kans op de radar: ${esc(o.title)}</span><span class="muted small">${relTime(o.createdAt)}</span></button></li>`).join('')}
+    </ul>
+    ${all.length > shown.length ? `<p class="muted small" style="margin:0.4rem 0 0">En nog ${all.length - shown.length} andere wijzigingen. Open een sessie om alles te zien.</p>` : ''}
+  </section>`;
+}
+
 function renderRadar() {
   return `<section class="section">
     <div class="section-head"><h2>Kansenradar</h2><span class="muted small">De beste ideeën uit alle sessies, van verkennen tot bouwen.</span></div>
@@ -832,6 +961,7 @@ function renderRadar() {
             ${S.ui.editOpp === o.id
               ? `<label class="sr-only" for="opp-desc-${o.id}">Beschrijving</label><textarea id="opp-desc-${o.id}" maxlength="4000" rows="4" data-change="opp-desc" data-id="${o.id}" placeholder="Wat is de kans, voor wie, en wat is de volgende stap?">${esc(o.description ?? '')}</textarea><div class="row" style="margin:0.3rem 0"><button class="sm primary" data-action="edit-opp" data-id="">Klaar</button></div>`
               : `${o.description ? `<div class="muted small" style="margin-bottom:0.35rem; white-space:pre-wrap">${esc(o.description.slice(0, 220))}${o.description.length > 220 ? '…' : ''}</div>` : ''}<button class="sm ghost" style="margin-bottom:0.35rem" data-action="edit-opp" data-id="${o.id}">${o.description ? 'Beschrijving bewerken' : '+ Beschrijving'}</button>`}
+            <div class="row" style="margin-bottom:0.35rem; gap:0.4rem">${o.canvas?.besluit ? `<span class="decision ${esc(o.canvas.besluit)}">${esc(DECISIONS.find(([k]) => k === o.canvas.besluit)?.[1] ?? '')}</span>` : ''}${o.createdBy && o.createdBy !== S.me && S.seen && isNew(o.createdAt, S.seen.radar ?? null) ? '<span class="new-badge">Nieuw</span>' : ''}<button class="sm" data-action="open-opp" data-id="${o.id}" aria-haspopup="dialog">Uitwerken</button><span class="progress">${canvasFilled(o)}/${CANVAS.length}</span></div>
             ${o.source && S.boards.some((b) => b.id === o.source.boardId) ? `<div class="small" style="margin-bottom:0.35rem">uit <a href="#s-${attr(o.source.boardId)}">${esc(S.boards.find((b) => b.id === o.source.boardId).title)}</a></div>` : ''}
             <div class="row">
               <select data-change="opp-owner" data-id="${o.id}" title="Trekker" aria-label="Trekker">
@@ -923,10 +1053,22 @@ function renderBoard() {
       <button class="tab ${S.tab === 'ai' ? 'active' : ''}" data-action="tab" data-key="ai" ${S.tab === 'ai' ? 'aria-current="page"' : ''}>Vraag Claude</button>
     </nav>
     ${renderStepBar(b, teamStep)}
+    ${renderSinceBar(b)}
     ${S.aiBusy ? `<div class="ai-busy"><span class="spinner"></span> Claude denkt na…<span class="spacer"></span><button class="sm" data-action="ai-stop">Stoppen</button></div>` : ''}
     ${({ ideeen: renderIdeas, perspectieven: renderPerspectives, matrix: renderMatrix, acties: renderActions, ai: renderAi }[S.tab] ?? renderIdeas)(b)}
   </main>
   ${S.ui.openIdea ? renderDrawer(b) : ''}`;
+}
+
+function renderSinceBar(b) {
+  const base = S.seenBase[b.id];
+  if (base === undefined) return '';
+  const evs = boardEvents(b.id, base);
+  if (!evs.length) return '';
+  const who = [...new Set(evs.map((e) => firstName(e.by)))];
+  return `<div class="since-bar" role="status"><span><strong>Sinds je laatste bezoek:</strong> ${esc(countLabel(evs))}, van ${esc(who.join(' en '))}.</span><span class="spacer"></span>
+    ${S.tab === 'ideeen' ? `<button class="sm" data-action="only-new" aria-pressed="${!!S.ui.onlyNew}">${S.ui.onlyNew ? 'Alles tonen' : 'Alleen nieuwe tonen'}</button>` : ''}
+    <button class="sm ghost" data-action="mark-read">Gelezen</button></div>`;
 }
 
 function renderStepBar(b, teamStep) {
@@ -947,8 +1089,9 @@ function ideaCard(idea) {
   const color = idea.fromAi ? 'var(--accent)' : PEOPLE[personOf(idea.authorId)]?.color ?? 'var(--border)';
   const comments = Object.values(idea.comments ?? {}).filter(Boolean).length;
   const given = PEOPLE_KEYS.filter((k) => idea.perspectives?.[k]).length;
-  return `<article class="card ${esc(idea.status)}" id="card-${idea.id}" style="--c:${color}">
-    <div class="row" style="gap:0.35rem">${fitTags(idea.fit)}${idea.status === 'geparkeerd' ? '' : `<button class="star" data-action="quick-shortlist" data-id="${idea.id}" aria-pressed="${idea.status === 'shortlist'}" title="${idea.status === 'shortlist' ? 'Van de shortlist halen' : 'Op de shortlist zetten'}" aria-label="${attr(`Shortlist: ${idea.text}`)}">${idea.status === 'shortlist' ? '★' : '☆'}</button>`}${idea.status === 'geparkeerd' ? '<span class="tag">geparkeerd</span>' : ''}</div>
+  const fresh = newOnIdea(idea, S.seenBase[idea.boardId]);
+  return `<article class="card ${esc(idea.status)} ${fresh ? 'is-new' : ''}" id="card-${idea.id}" style="--c:${color}">
+    <div class="row" style="gap:0.35rem">${fresh ? `<span class="new-badge">${fresh}</span>` : ''}${fitTags(idea.fit)}${idea.status === 'geparkeerd' ? '' : `<button class="star" data-action="quick-shortlist" data-id="${idea.id}" aria-pressed="${idea.status === 'shortlist'}" title="${idea.status === 'shortlist' ? 'Van de shortlist halen' : 'Op de shortlist zetten'}" aria-label="${attr(`Shortlist: ${idea.text}`)}">${idea.status === 'shortlist' ? '★' : '☆'}</button>`}${idea.status === 'geparkeerd' ? '<span class="tag">geparkeerd</span>' : ''}</div>
     <button class="card-open" id="open-${idea.id}" data-action="open-idea" data-id="${idea.id}" aria-haspopup="dialog">${esc(idea.text)}</button>
     <div class="card-foot">
       ${idea.fromAi ? '<span class="tag" style="--c:var(--accent)" title="Voorgesteld door Claude">AI</span>' : avatar(idea.authorId, { size: 'sm' })}
@@ -965,18 +1108,22 @@ function ideaCard(idea) {
 
 function renderIdeas(b) {
   const ideas = boardIdeas();
+  const silent = silentActive(b);
   const votesUsed = ideas.reduce((s, i) => s + (Number(i.votes?.[S.me]) || 0), 0);
   const q = (S.ui.query ?? '').trim().toLowerCase();
   const byFilter = (i) => !S.ui.lensFilter || (S.ui.lensFilter === 'ai' ? i.fromAi : !i.fromAi && personOf(i.authorId) === S.ui.lensFilter);
   const visible = ideas.filter((i) => (S.ui.showParked || i.status !== 'geparkeerd') && byFilter(i)
     && (!q || `${i.text} ${i.details ?? ''}`.toLowerCase().includes(q)));
-  const filtering = q || S.ui.lensFilter;
+  const base = S.seenBase[b.id];
+  const visibleAll = visible;
+  const shownIdeas = S.ui.onlyNew ? visible.filter((i) => newOnIdea(i, base)) : visible;
+  const filtering = q || S.ui.lensFilter || S.ui.onlyNew;
   const clusters = b.clusters ?? [];
-  return `<div class="panel">
+  return `${renderSilent(b)}<div class="panel">
     <div class="composer">
-      <textarea id="idea-text" maxlength="280" data-counter="idea-count" data-draft="idea.text" data-enter="add-idea" rows="2" aria-describedby="idea-count" placeholder="Nieuw idee… (Enter = toevoegen, Shift+Enter = nieuwe regel)">${esc(draft('idea.text'))}</textarea>
+      <textarea id="idea-text" maxlength="280" data-counter="idea-count" data-draft="idea.text" data-enter="add-idea" rows="2" aria-describedby="idea-count" placeholder="${silent ? 'Stille ronde: je idee blijft privé tot de onthulling…' : 'Nieuw idee… (Enter = toevoegen, Shift+Enter = nieuwe regel)'}">${esc(draft('idea.text'))}</textarea>
       <select id="idea-cluster" data-draft="idea.cluster" aria-label="Thema">${clusters.map((c) => `<option value="${c.id}" ${draft('idea.cluster') === c.id ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select>
-      <button class="primary" data-action="add-idea">Toevoegen</button>
+      <button class="primary" data-action="add-idea">${silent ? 'Privé bewaren' : 'Toevoegen'}</button>
     </div>
     <div class="counter" id="idea-count" aria-live="off">${draft('idea.text').length}/280</div>
   </div>
@@ -996,9 +1143,9 @@ function renderIdeas(b) {
       : '<button class="sm" data-action="toggle-add-cluster">+ Thema</button>'}
   </div>
   ${renderAiStrip(b)}
-  ${filtering ? `<p class="small" role="status" style="margin:0 0 0.6rem">${visible.length} van ${ideas.length} ideeën zichtbaar. <button class="sm ghost" data-action="clear-filter">Filters wissen</button></p>` : ''}
+  ${filtering ? `<p class="small" role="status" style="margin:0 0 0.6rem">${shownIdeas.length} van ${ideas.length} ideeën zichtbaar. <button class="sm ghost" data-action="clear-filter">Filters wissen</button></p>` : ''}
   ${ideas.length ? `<div class="columns">${clusters.map((c) => {
-      const list = sortedIdeas(visible.filter((i) => i.clusterId === c.id || (!clusters.some((x) => x.id === i.clusterId) && c === clusters[0])));
+      const list = sortedIdeas(shownIdeas.filter((i) => i.clusterId === c.id || (!clusters.some((x) => x.id === i.clusterId) && c === clusters[0])));
       return `<section class="column">
         <div class="column-head">
           ${S.ui.renameCluster === c.id ? `<input id="rename-${c.id}" data-draft="rename.${c.id}" data-enter="save-cluster" data-id="${c.id}" value="${attr(draft(`rename.${c.id}`, c.name))}"><button class="sm primary" data-action="save-cluster" data-id="${c.id}">Opslaan</button>`
@@ -1010,6 +1157,66 @@ function renderIdeas(b) {
       </section>`;
     }).join('')}</div>`
     : `<div class="panel empty-state"><p><strong>Nog geen ideeën.</strong></p><p>Tip: zet een timebox van 10 minuten en schrijf ieder zoveel mogelijk ideeën op, nog zonder te oordelen.</p></div>`}`;
+}
+
+function silentActive(b) { return !!b?.silentRound && !b.silentRound.revealed; }
+function silentPath(boardId) { return `data/users/${S.me}/silent-${boardId}`; }
+let silentUnsub = null;
+// Je eigen concept-ideeën van de stille ronde: alleen jij kunt ze lezen.
+function watchSilentDraft() {
+  silentUnsub?.();
+  silentUnsub = null;
+  S.silentDraft = null;
+  S.silentFor = S.board;
+  if (!S.board || !S.me || !S.cap.db) return;
+  const boardId = S.board;
+  silentUnsub = S.cap.db.doc(silentPath(boardId)).onSnapshot((snap) => {
+    if (S.silentFor !== boardId) return;
+    S.silentDraft = snap.exists ? (snap.data().ideas ?? {}) : {};
+    maybePublishSilent();
+    render();
+  }, () => { S.silentDraft = {}; });
+}
+const draftList = () => Object.entries(S.silentDraft ?? {}).filter(([, v]) => v).map(([id, v]) => ({ id, ...v })).sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+// Na de onthulling (of als er geen ronde meer loopt) deelt ieder zijn eigen concepten.
+async function maybePublishSilent() {
+  const b = board();
+  if (!b || S.publishing || S.readOnly || S.canWrite === false) return;
+  const list = draftList();
+  if (!list.length || silentActive(b)) return;
+  S.publishing = true;
+  try {
+    const now = nowIso();
+    for (const d of list) {
+      await setDoc(`ideas/${newId('ideas')}`, {
+        boardId: b.id, text: d.text, details: '', clusterId: (b.clusters ?? []).some((c) => c.id === d.clusterId) ? d.clusterId : b.clusters?.[0]?.id ?? null,
+        authorId: S.me, createdAt: now, writtenAt: d.createdAt, fromSilent: true, status: 'open', fromAi: false, votes: {}, ratings: {}, perspectives: {}, comments: {},
+      });
+    }
+    await setDoc(silentPath(b.id), { ideas: {} });
+    await updateDoc(`boards/${b.id}`, { silentCounts: { [S.me]: 0 } });
+    toast(`Je ${list.length === 1 ? 'idee is' : `${list.length} ideeën zijn`} onthuld.`);
+  } finally {
+    S.publishing = false;
+  }
+}
+function renderSilent(b) {
+  const r = b.silentRound;
+  const counts = Object.entries(b.silentCounts ?? {}).filter(([, n]) => n > 0);
+  if (!r) {
+    return `<div class="silent"><div class="row"><strong>Stille ronde</strong><span class="muted small" style="flex:1; min-width:min(260px, 100%)">Ieder schrijft eerst voor zich. Niemand ziet de ideeën van de ander tot ze tegelijk worden onthuld. Zo gaat niemand mee met het eerste idee.</span>
+      ${[5, 10, 15].map((m) => `<button class="sm" data-action="silent-start" data-min="${m}">${m} min</button>`).join('')}</div></div>`;
+  }
+  if (!r.revealed) {
+    const mine = draftList();
+    return `<div class="silent" role="region" aria-label="Stille ronde">
+      <div class="row"><strong>Stille ronde loopt</strong><span class="muted small">gestart door ${esc(firstName(r.startedBy))}. Je ideeën blijven privé tot de onthulling${r.endsAt ? ', automatisch als de tijd om is' : ''}.</span><span class="spacer"></span><button class="sm primary" data-action="silent-reveal">Nu onthullen</button></div>
+      <div class="who" aria-label="Hoeveel ideeën ieder klaar heeft">${counts.length ? counts.map(([id, n]) => `<span class="badge">${esc(firstName(id))}: ${n}</span>`).join('') : '<span class="muted small">Nog niemand heeft een idee klaar.</span>'}</div>
+      ${mine.length ? `<p class="small" style="margin:0.6rem 0 0"><strong>Jouw ideeën</strong> (alleen voor jou zichtbaar):</p><ul>${mine.map((d) => `<li>${esc(d.text)} <button class="ghost icon sm" data-action="silent-remove" data-id="${attr(d.id)}" aria-label="${attr(`Verwijder: ${d.text}`)}">✕</button></li>`).join('')}</ul>` : ''}
+    </div>`;
+  }
+  const waiting = counts.map(([id]) => firstName(id));
+  return `<div class="silent" role="status"><div class="row"><strong>Stille ronde onthuld</strong><span class="muted small" style="flex:1">${waiting.length ? `Nog niet gedeeld: ${esc(waiting.join(', '))}. Hun ideeën verschijnen zodra ze de app openen.` : 'Alle ideeën staan op het bord.'}</span><button class="sm" data-action="silent-close">Sluiten</button></div></div>`;
 }
 
 function renderAiStrip(b) {
@@ -1254,7 +1461,7 @@ function renderDrawer(b) {
     </section>` : ''}
     <section>
       <h4>Reacties</h4>
-      ${comments.map(([cid, c]) => `<div class="comment">${avatar(c.authorId, { size: 'sm' })}<div class="body"><div class="small"><strong>${esc(firstName(c.authorId))}</strong> <span class="muted">${relTime(c.createdAt)}</span></div>${esc(c.text)}</div>${c.authorId === S.me ? `<button class="ghost icon sm del" data-action="remove-comment" data-id="${idea.id}" data-cid="${attr(cid)}" aria-label="Je reactie verwijderen" title="Verwijderen">✕</button>` : ''}</div>`).join('')}
+      ${comments.map(([cid, c]) => `<div class="comment ${c.authorId !== S.me && S.seenBase[idea.boardId] !== undefined && isNew(c.createdAt, S.seenBase[idea.boardId]) ? 'is-new' : ''}">${avatar(c.authorId, { size: 'sm' })}<div class="body"><div class="small"><strong>${esc(firstName(c.authorId))}</strong> <span class="muted">${relTime(c.createdAt)}</span></div>${esc(c.text)}</div>${c.authorId === S.me ? `<button class="ghost icon sm del" data-action="remove-comment" data-id="${idea.id}" data-cid="${attr(cid)}" aria-label="Je reactie verwijderen" title="Verwijderen">✕</button>` : ''}</div>`).join('')}
       <div class="row">
         <input id="comment-${idea.id}" maxlength="1000" data-draft="comment.${idea.id}" data-enter="add-comment" data-id="${idea.id}" value="${attr(draft(`comment.${idea.id}`))}" placeholder="Reageer…" style="flex:1">
         <button data-action="add-comment" data-id="${idea.id}">Plaats</button>
@@ -1293,6 +1500,40 @@ function perspBlock(idea, k, editable) {
   </div>`;
 }
 
+function renderOppDrawer() {
+  const o = S.opps.find((x) => x.id === S.ui.openOpp);
+  if (!o) return '';
+  const src = o.source && S.boards.find((b) => b.id === o.source.boardId);
+  const decision = o.canvas?.besluit ?? null;
+  return `<div class="drawer-backdrop" data-action="close-opp"></div>
+  <div class="drawer" role="dialog" aria-modal="true" aria-label="${attr(`Kans uitwerken: ${o.title}`)}" tabindex="-1">
+    <div class="row"><strong>Kans uitwerken</strong><span class="progress">${canvasFilled(o)} van ${CANVAS.length} ingevuld</span><span class="spacer"></span><button class="ghost" data-action="close-opp" title="Sluiten (Esc)" aria-label="Sluiten">✕</button></div>
+    <div class="stack">
+      <label for="opp-t" class="sr-only">Titel</label>
+      <textarea id="opp-t" class="title" maxlength="200" rows="2" data-change="opp-title" data-id="${o.id}">${esc(o.title)}</textarea>
+      ${src ? `<div class="small muted">Uit de sessie <a href="#s-${attr(src.id)}">${esc(src.title)}</a></div>` : ''}
+      <div class="muted small">Wijzigingen worden automatisch opgeslagen zodra je een veld verlaat.</div>
+      ${S.cap.sample ? `<div><button class="sm" data-action="ai-canvas" data-id="${o.id}" ${S.aiBusy ? 'disabled' : ''}>${S.aiBusy === 'canvas' ? 'Claude schrijft…' : 'Laat Claude de lege velden invullen'}</button>${o.canvas?.aiDraftBy ? `<span class="muted small"> Bevat een aanzet van Claude; controleer die.</span>` : ''}</div>` : ''}
+    </div>
+    ${CANVAS.map((f) => `<div class="canvas-field">
+      <label for="cv-${f.key}" style="color:var(--text); font-weight:600; margin:0">${esc(f.label)}</label>
+      <p class="hint" id="cv-${f.key}-hint">${esc(f.hint)}</p>
+      <textarea id="cv-${f.key}" rows="3" maxlength="2000" data-change="opp-canvas" data-id="${o.id}" data-field="${f.key}" aria-describedby="cv-${f.key}-hint">${esc(o.canvas?.[f.key] ?? '')}</textarea>
+    </div>`).join('')}
+    <section>
+      <h4 id="cv-besluit">Besluit</h4>
+      <div class="segmented" role="group" aria-labelledby="cv-besluit">${DECISIONS.map(([k, l]) => `<button class="${decision === k ? 'on' : ''}" aria-pressed="${decision === k}" data-action="opp-decision" data-id="${o.id}" data-key="${decision === k ? '' : k}">${l}</button>`).join('')}</div>
+    </section>
+    <div class="row"><button data-action="copy-opp" data-id="${o.id}">Kopieer als Markdown</button></div>
+  </div>`;
+}
+function oppMarkdown(o) {
+  const out = [`# ${o.title}`, ''];
+  for (const f of CANVAS) if ((o.canvas?.[f.key] ?? '').trim()) out.push(`## ${f.label}`, '', o.canvas[f.key].trim(), '');
+  if (o.canvas?.besluit) out.push(`**Besluit:** ${DECISIONS.find(([k]) => k === o.canvas.besluit)?.[1]}`);
+  return out.join('\n');
+}
+
 function renderModal() {
   const m = S.modal;
   return `<div class="modal-backdrop" data-action="modal-cancel"><div class="modal" role="alertdialog" aria-modal="true" aria-labelledby="modal-title" aria-describedby="modal-text" data-stop="1" tabindex="-1">
@@ -1323,7 +1564,12 @@ function tickTimer() {
     const s = Math.floor((left % 60000) / 1000);
     t.textContent = left ? `${m}:${String(s).padStart(2, '0')}` : 'Tijd!';
     t.classList.toggle('ending', left < 60_000);
-    if (!left && lastTimerEnd !== t.dataset.ends) { lastTimerEnd = t.dataset.ends; toast('De tijd is om.'); }
+    if (!left && lastTimerEnd !== t.dataset.ends) {
+      lastTimerEnd = t.dataset.ends;
+      const b = board();
+      if (silentActive(b) && b.silentRound.endsAt === t.dataset.ends) { toast('De tijd is om: de ideeën worden onthuld.'); revealSilent(); }
+      else toast('De tijd is om.');
+    }
   };
   update();
   timerInterval ??= setInterval(update, 1000);
@@ -1446,6 +1692,16 @@ function clearDraft(...keys) {
   render();
 }
 
+function revealSilent() {
+  const b = board();
+  if (!b?.silentRound || b.silentRound.revealed) return;
+  b.silentRound = { ...b.silentRound, revealed: true, revealedAt: nowIso() };
+  b.timer = null;
+  updateDoc(`boards/${b.id}`, { silentRound: { revealed: true, revealedAt: b.silentRound.revealedAt }, timer: null, updatedAt: nowIso() });
+  queueMicrotask(maybePublishSilent);
+  render();
+}
+
 const actions = {
   home(el, e) { e.preventDefault(); go(null); },
   'open-board'(el) { S.ui.showArchived = false; go(el.dataset.id); },
@@ -1493,7 +1749,7 @@ const actions = {
     if (!guardWrite()) return;
     const title = draft('opp.title').trim();
     if (!title) return;
-    setDoc(`opportunities/${newId('opportunities')}`, { title: title.slice(0, 200), description: '', stage: 'verkennen', ownerId: S.me, source: null, createdAt: nowIso() });
+    setDoc(`opportunities/${newId('opportunities')}`, { title: title.slice(0, 200), description: '', stage: 'verkennen', ownerId: S.me, createdBy: S.me, source: null, createdAt: nowIso() });
     clearDraft('opp.title');
   },
   'edit-opp'(el) { S.ui.editOpp = el.dataset.id || null; render(); if (S.ui.editOpp) document.getElementById(`opp-desc-${S.ui.editOpp}`)?.focus(); },
@@ -1540,6 +1796,14 @@ const actions = {
     if (!text) { document.getElementById('idea-text')?.focus(); return toast('Typ eerst je idee.'); }
     const b = board();
     const clusterId = (b.clusters ?? []).some((c) => c.id === draft('idea.cluster')) ? draft('idea.cluster') : b.clusters?.[0]?.id ?? null;
+    if (silentActive(b)) {
+      const ideasMap = { ...(S.silentDraft ?? {}), [uid()]: { text: text.slice(0, 280), clusterId, createdAt: nowIso() } };
+      S.silentDraft = ideasMap;
+      setDoc(silentPath(b.id), { ideas: ideasMap });
+      updateDoc(`boards/${b.id}`, { silentCounts: { [S.me]: Object.values(ideasMap).filter(Boolean).length } });
+      clearDraft('idea.text');
+      return;
+    }
     setDoc(`ideas/${newId('ideas')}`, {
       boardId: b.id, text: text.slice(0, 280), details: '', clusterId,
       authorId: S.me, createdAt: nowIso(), status: 'open', fromAi: false, votes: {}, ratings: {}, perspectives: {}, comments: {},
@@ -1547,7 +1811,76 @@ const actions = {
     touchBoard();
     clearDraft('idea.text');
   },
-  'clear-filter'() { S.ui.query = ''; S.ui.lensFilter = null; const el = document.getElementById('idea-search'); if (el) el.value = ''; render(); },
+  'silent-start'(el) {
+    if (!guardWrite()) return;
+    const m = Number(el.dataset.min);
+    const endsAt = new Date(Date.now() + m * 60_000).toISOString();
+    const patch = { silentRound: { startedBy: S.me, startedAt: nowIso(), endsAt, revealed: false }, silentCounts: {}, timer: { endsAt, minutes: m } };
+    // Direct lokaal toepassen: een idee dat je meteen daarna typt, moet al privé blijven.
+    Object.assign(board(), patch);
+    touchBoard(patch);
+    render();
+    toast(`Stille ronde gestart: ${m} minuten.`);
+  },
+  'silent-reveal'() {
+    if (!guardWrite()) return;
+    confirmModal('Ideeën nu onthullen?', 'Ieders ideeën worden zichtbaar voor het hele team, ook als de tijd nog niet om is.', 'Onthullen', () => revealSilent());
+  },
+  'silent-close'() { if (guardWrite()) touchBoard({ silentRound: null, silentCounts: {} }); },
+  'silent-remove'(el) {
+    const b = board();
+    const ideasMap = { ...(S.silentDraft ?? {}) };
+    delete ideasMap[el.dataset.id];
+    S.silentDraft = ideasMap;
+    setDoc(silentPath(b.id), { ideas: ideasMap });
+    updateDoc(`boards/${b.id}`, { silentCounts: { [S.me]: Object.values(ideasMap).filter(Boolean).length } });
+    render();
+  },
+  'only-new'() { S.ui.onlyNew = !S.ui.onlyNew; render(); },
+  'mark-read'() { if (S.board) { S.seenBase[S.board] = nowIso(); markSeen({ boards: { [S.board]: nowIso() } }); } S.ui.onlyNew = false; render(); },
+  'mark-all-read'() {
+    const now = nowIso();
+    markSeen({ radar: now, boards: Object.fromEntries(S.boards.map((b) => [b.id, now])) });
+    render();
+  },
+  'open-opp'(el) {
+    returnFocusTo = { el, domId: el.id, id: el.dataset.id, action: 'open-opp' };
+    S.ui.openOpp = el.dataset.id;
+    render();
+  },
+  'close-opp'() { S.ui.openOpp = null; render(); },
+  'opp-decision'(el) {
+    if (!guardWrite()) return;
+    updateDoc(`opportunities/${el.dataset.id}`, { canvas: { besluit: el.dataset.key || null } });
+  },
+  async 'copy-opp'(el) {
+    const o = S.opps.find((x) => x.id === el.dataset.id);
+    try { await navigator.clipboard.writeText(oppMarkdown(o)); toast('Gekopieerd.'); }
+    catch { toast('Kopiëren lukte niet in deze weergave.', 'error'); }
+  },
+  'ai-canvas'(el) {
+    const o = S.opps.find((x) => x.id === el.dataset.id);
+    const empty = CANVAS.filter((f) => !(o.canvas?.[f.key] ?? '').trim() && f.key !== 'resultaat');
+    if (!empty.length) return toast('Alle velden zijn al ingevuld.');
+    const src = o.source && S.ideas.find((i) => i.id === o.source.ideaId);
+    const persp = src ? Object.entries(src.perspectives ?? {}).filter(([, p]) => p).map(([k, p]) => `- ${LENSES[k]?.label ?? k} (${p.sentiment}): ${p.text}`).join('\n') : '';
+    const filled = CANVAS.filter((f) => (o.canvas?.[f.key] ?? '').trim()).map((f) => `${f.label}: ${o.canvas[f.key]}`).join('\n');
+    runAi('canvas', async (signal) => {
+      const prompt = `${teamIntro()}\n\n---\nWerk deze kans uit tot iets wat het team kan toetsen.\nKans: ${o.title}\n${o.description ? `Beschrijving: ${o.description}\n` : ''}${src?.details ? `Toelichting bij het oorspronkelijke idee: ${src.details}\n` : ''}${persp ? `Oordelen van het team:\n${persp}\n` : ''}${filled ? `Al ingevuld (niet herhalen, wel op voortbouwen):\n${filled}\n` : ''}\nVul deze velden in, elk in 2 à 3 concrete zinnen: ${empty.map((f) => `"${f.key}" (${f.label}: ${f.hint})`).join('; ')}. Het experiment moet binnen twee weken en met weinig geld uit te voeren zijn, en de belangrijkste aanname toetsen.\n\nAntwoord uitsluitend met één JSON-object met als sleutels ${empty.map((f) => `"${f.key}"`).join(', ')} en als waarden strings.`;
+      const r = await S.cap.sample.json(prompt, { signal, cache: false });
+      if (!r || typeof r !== 'object') throw { code: 'invalid_json' };
+      const fresh = S.opps.find((x) => x.id === o.id);
+      const patch = {};
+      for (const f of empty) if (typeof r[f.key] === 'string' && r[f.key].trim() && !(fresh?.canvas?.[f.key] ?? '').trim()) patch[f.key] = r[f.key].trim().slice(0, 2000);
+      if (Object.keys(patch).length) await updateDoc(`opportunities/${o.id}`, { canvas: { ...patch, aiDraftBy: S.me } });
+    }, o.id);
+  },
+  'open-event'(el) {
+    S.ui.showArchived = false;
+    go(el.dataset.board);
+    if (el.dataset.idea) { S.ui.openIdea = el.dataset.idea; render(); }
+  },
+  'clear-filter'() { S.ui.query = ''; S.ui.lensFilter = null; S.ui.onlyNew = false; const el = document.getElementById('idea-search'); if (el) el.value = ''; render(); },
   'toggle-add-cluster'() { S.ui.addCluster = !S.ui.addCluster; render(); },
   'add-cluster'() {
     if (!guardWrite()) return;
@@ -1630,7 +1963,7 @@ const actions = {
   async 'to-radar'(el) {
     if (!guardWrite()) return;
     const idea = boardIdeas().find((i) => i.id === el.dataset.id);
-    await setDoc(`opportunities/${newId('opportunities')}`, { title: idea.text, description: idea.details ?? '', stage: 'verkennen', ownerId: S.me, source: { boardId: S.board, ideaId: idea.id }, createdAt: nowIso() });
+    await setDoc(`opportunities/${newId('opportunities')}`, { title: idea.text, description: idea.details ?? '', stage: 'verkennen', ownerId: S.me, createdBy: S.me, source: { boardId: S.board, ideaId: idea.id }, createdAt: nowIso() });
     toast('Toegevoegd aan de kansenradar.');
   },
   async 'accept-suggestion'(el) {
@@ -1817,6 +2150,8 @@ const changeHandlers = {
   },
   'action-owner'(el) { if (guardWrite()) updateDoc(`items/${el.dataset.id}`, { ownerId: el.value }); },
   'action-due'(el) { if (guardWrite()) updateDoc(`items/${el.dataset.id}`, { due: /^\d{4}-\d{2}-\d{2}$/.test(el.value) ? el.value : '' }); },
+  'opp-canvas'(el) { if (guardWrite()) updateDoc(`opportunities/${el.dataset.id}`, { canvas: { [el.dataset.field]: el.value.slice(0, 2000) } }); },
+  'opp-title'(el) { const v = el.value.trim(); if (v && guardWrite()) updateDoc(`opportunities/${el.dataset.id}`, { title: v.slice(0, 200) }); },
   'opp-desc'(el) { if (guardWrite()) updateDoc(`opportunities/${el.dataset.id}`, { description: el.value.slice(0, 4000) }); },
   'opp-owner'(el) { if (guardWrite()) updateDoc(`opportunities/${el.dataset.id}`, { ownerId: el.value }); },
 };
@@ -1863,7 +2198,7 @@ root.addEventListener('keydown', (e) => {
 document.addEventListener('keydown', (e) => {
   if (e.key !== 'Escape') return;
   if (S.modal) { S.modal = null; render(); }
-  else if (S.ui.openIdea) { document.activeElement?.blur(); S.ui.openIdea = null; render(); }
+  else if (S.ui.openIdea || S.ui.openOpp) { document.activeElement?.blur(); S.ui.openIdea = null; S.ui.openOpp = null; render(); }
 });
 
 // ---------------------------------------------------------------------------
@@ -1880,7 +2215,7 @@ async function start() {
     S.me = await user.id();
     S.canWrite = await user.can('data.write');
   }
-  if (db) subscribe();
+  if (db) { subscribe(); watchSilentDraft(); }
   if (room) {
     room.onPeers(({ peers }) => { S.peers = peers.filter((p) => p.kind === 'viewer'); scheduleProfiles(); queueMicrotask(render); }, () => {});
     room.presence({ board: S.board ?? null }).catch(() => {});

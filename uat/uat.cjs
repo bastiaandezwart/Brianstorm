@@ -171,7 +171,7 @@ const rec = (id, name, status, note = '') => { results.push({ id, name, status, 
   await T('U25', 'Sessie verwijderen met bevestiging', async () => {
     await A.click('[data-action=home]'); await A.click('[data-action=toggle-new-board]'); await A.click('[data-action=pick-template][data-key=vrij]'); await A.fill('#nb-title', 'Testsessie'); await A.click('[data-action=create-board]');
     await A.click('[data-action=toggle-edit-header]'); await A.click('[data-action=delete-board]'); await A.click('[data-action=modal-confirm]'); await A.waitForSelector('.hero');
-    if (await A.locator('.board-card >> text=Testsessie').count()) throw new Error('sessie niet verwijderd');
+    await A.waitForSelector('.board-card >> text=Testsessie', { state: 'detached', timeout: 5000 }).catch(() => { throw new Error('sessie niet verwijderd'); });
   });
   await T('U26', 'Toegankelijkheid (axe, WCAG 2.2 AA) op bord en startpagina', async () => {
     const AXE = fs.readFileSync(require.resolve('axe-core/axe.min.js'), 'utf8');
@@ -198,6 +198,61 @@ const rec = (id, name, status, note = '') => { results.push({ id, name, status, 
     if (!prompt.includes('Joey') || /Enterprise Architect|Product Manager/.test(prompt)) throw new Error('prompt bevat nog rollen of mist namen');
     if (!(await A.locator('.suggestion >> text=Past bij').count())) throw new Error('geen "Past bij" bij suggesties');
     await A.click('[data-action=dismiss-suggestion] >> nth=0'); await A.click('[data-action=dismiss-suggestion] >> nth=0');
+  });
+  await T('U31', 'Startpagina toont wat er nieuw is sinds je laatste bezoek', async () => {
+    await A.click('[data-action=home]'); await A.waitForSelector('.hero');
+    await B.click('[data-action=open-board]'); await B.fill('#idea-text', 'Nieuw idee van Joey terwijl Bastiaan weg is'); await B.keyboard.press('Enter');
+    await A.waitForSelector('.board-card .new-badge', { timeout: 4000 });
+    await A.waitForSelector('.news >> text=Nieuw idee van Joey');
+    await A.click('.news button >> text=Nieuw idee van Joey'); await A.waitForSelector('.drawer');
+    if (!(await A.inputValue('#d-text')).includes('Nieuw idee van Joey')) throw new Error('verkeerd idee geopend');
+    await A.keyboard.press('Escape');
+  });
+  await T('U32', 'In de sessie: balk met nieuws, alleen nieuwe tonen, gelezen', async () => {
+    await A.waitForSelector('.since-bar >> text=1 nieuw idee');
+    await A.click('[data-action=only-new]'); await A.waitForTimeout(100);
+    const n = await A.locator('.card').count(); if (n !== 1) throw new Error(`alleen-nieuw toont ${n} kaarten`);
+    if (!(await A.locator('.card .new-badge').count())) throw new Error('geen Nieuw-label op kaart');
+    await A.click('[data-action=mark-read]'); await A.waitForSelector('.since-bar', { state: 'detached' });
+    if ((await A.locator('.card').count()) < 2) throw new Error('filter niet opgeheven');
+  });
+  await T('U33', 'Stille ronde: privé schrijven, tegelijk onthullen', async () => {
+    const before = await B.locator('.card').count();
+    await A.click('[data-action=silent-start][data-min="5"]'); await B.waitForSelector('.silent >> text=Stille ronde loopt');
+    await A.fill('#idea-text', 'Geheim idee van Bastiaan'); await A.keyboard.press('Enter');
+    await B.fill('#idea-text', 'Geheim idee van Joey'); await B.keyboard.press('Enter');
+    await B.waitForSelector('.silent .badge >> text=Bastiaan: 1');
+    if ((await B.locator('.card').count()) !== before) throw new Error('privé idee zichtbaar als kaart');
+    if ((await B.evaluate(() => document.body.innerText)).includes('Geheim idee van Bastiaan')) throw new Error('Joey ziet het idee van Bastiaan');
+    if (!(await B.locator('.silent li >> text=Geheim idee van Joey').count())) throw new Error('eigen privé idee niet getoond');
+    await A.click('[data-action=silent-reveal]'); await A.click('[data-action=modal-confirm]');
+    await B.waitForSelector('.card >> text=Geheim idee van Bastiaan', { timeout: 5000 }); await B.waitForSelector('.card >> text=Geheim idee van Joey', { timeout: 5000 });
+    await A.waitForSelector('.card >> text=Geheim idee van Joey', { timeout: 5000 });
+    await A.waitForSelector('.silent >> text=Alle ideeën staan op het bord');
+    await A.click('[data-action=silent-close]'); await B.waitForSelector('.silent >> text=Ieder schrijft eerst voor zich');
+  });
+  await T('U34', 'Stille ronde: automatisch onthullen als de tijd om is', async () => {
+    await A.waitForSelector('[data-action=silent-start]'); await A.click('[data-action=silent-start][data-min="5"]'); await A.fill('#idea-text', 'Idee bij afloop timer'); await A.keyboard.press('Enter');
+    await A.waitForSelector('.silent .badge >> text=Bastiaan: 1');
+    // tijd laten verlopen: eindtijd in het verleden zetten via de gedeelde opslag
+    await A.evaluate(() => { const db = JSON.parse(localStorage.getItem('mockdb')); for (const [k, v] of Object.entries(db)) if (k.startsWith('boards/') && v.silentRound && !v.silentRound.revealed) { const t = new Date(Date.now() - 1000).toISOString(); v.silentRound.endsAt = t; v.timer = { endsAt: t, minutes: 5 }; } localStorage.setItem('mockdb', JSON.stringify(db)); new BroadcastChannel('mock').postMessage('db'); });
+    await A.reload(); await A.waitForSelector('.card >> text=Idee bij afloop timer', { timeout: 6000 });
+    await A.click('[data-action=silent-close]');
+  });
+  await T('U35', 'Kans uitwerken: velden, aanzet van Claude, besluit', async () => {
+    await A.click('[data-action=home]'); await A.click('.opp [data-action=open-opp]'); await A.waitForSelector('.drawer');
+    await A.fill('#cv-probleem', 'Klanten weten niet welk platform past.'); await A.press('#cv-probleem', 'Tab');
+    await A.click('[data-action=ai-canvas]'); await A.waitForFunction(() => document.querySelector('#cv-experiment')?.value.includes('Vijf gesprekken'), null, { timeout: 5000 });
+    if ((await A.inputValue('#cv-probleem')) !== 'Klanten weten niet welk platform past.') throw new Error('Claude overschreef een ingevuld veld');
+    await A.click('[data-action=opp-decision][data-key=doorgaan]');
+    await B.click('[data-action=home]'); await B.waitForSelector('.opp .decision.doorgaan', { timeout: 4000 });
+    const prog = await B.textContent('.opp .progress'); if (!prog.startsWith('6/')) throw new Error('voortgang ' + prog);
+  });
+  await T('U36', 'Toegankelijkheid van het uitwerkpaneel (axe)', async () => {
+    await A.addScriptTag({ content: fs.readFileSync(require.resolve('axe-core/axe.min.js'), 'utf8') });
+    const v = await A.evaluate(async () => (await axe.run(document, { runOnly: ['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'] })).violations.map((x) => x.id));
+    await A.keyboard.press('Escape');
+    if (v.length) throw new Error(v.join(', '));
   });
   rec('U27', 'Geen JavaScript-fouten tijdens de test', errors.length ? 'FAIL' : 'PASS', errors.slice(0, 3).join(' | '));
   fs.writeFileSync(__dirname + '/resultaten.json', JSON.stringify(results, null, 2));

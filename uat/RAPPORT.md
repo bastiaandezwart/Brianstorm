@@ -97,3 +97,17 @@ Geen rollen meer: je checkt in als Mart, Joey, Timon of Bastiaan, of je doet mee
 Scenario's aangepast en toegevoegd: U28 (alleen voornamen), U29 (expertise invullen, alleen je eigen kaart), U30 (Claude krijgt de expertise mee). Resultaat: **30 van 30 geslaagd**.
 
 Nieuwe bevinding, opgelost: na het terugzetten van een gearchiveerde sessie bleef de startpagina het lege archief tonen. Bij het openen van een sessie keert de weergave nu terug naar de actieve sessies.
+
+## Update versie 5: nieuw sinds je laatste bezoek, stille ronde, kans uitwerken
+
+**Nieuw sinds je laatste bezoek.** De startpagina toont per sessie een label "x nieuw" en een overzicht van wat anderen deden sinds je vorige bezoek. Klik je op een regel, dan ga je direct naar dat idee. In een sessie staat bovenaan een balk met wat er nieuw is, met de knoppen "Alleen nieuwe tonen" en "Gelezen". Nieuwe kaarten en reacties zijn gemarkeerd. Je gelezen-status is privé: alleen jij kunt hem lezen.
+
+**Stille ronde.** Ieder schrijft voor zich; de ideeën blijven privé. Je ziet alleen hoeveel ideeën ieder klaar heeft. Na de onthulling, met de knop of automatisch als de tijd om is, komen alle ideeën tegelijk op het bord. Wie op dat moment niet online is, deelt zijn ideeën zodra hij de app opent.
+
+**Kans uitwerken.** Elke kans op de radar heeft een uitwerking met zeven velden: probleem, klant, waardepropositie, verdienmodel, belangrijkste aanname, experiment en resultaat. Daarnaast leg je een besluit vast: doorgaan, bijsturen of stoppen. Claude vult op verzoek alleen de lege velden in en laat wat er al staat met rust. De kaart toont de voortgang en het besluit.
+
+Nieuwe scenario's U31 tot en met U36. Resultaat: **36 van 36 geslaagd**, twee keer achter elkaar.
+
+Gevonden en opgelost tijdens het testen: typte je direct na het starten van een stille ronde een idee, dan kon dat nog openbaar worden geplaatst, omdat je scherm de ronde nog niet kende. De ronde geldt nu direct op je eigen scherm.
+
+Niet nagebootst en dus in het echt te controleren: dat de privé-ideeën van een stille ronde echt alleen voor de schrijver leesbaar zijn. Dit is de standaardinstelling van de opslag van claude.ai voor `data/users/<id>/`. De test kan alleen nagaan dat de app nooit de ideeën van een ander opvraagt.
